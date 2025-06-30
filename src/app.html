@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/robot.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<meta name="theme-color" content="#101828" />
+        <!-- Apple does not allow svg icons. -->
+        <!-- Use 196x196 png instead -->
+        <link rel="apple-touch-icon"
+        href="%sveltekit.assets%/robot.png" />
+        <link rel="apple-touch-icon-precomposed" 
+        href="%sveltekit.assets%/robot.png" />
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-wep-app-capable" content="yes" />
+
+        <link rel="icon" sizes="196x196" href="%sveltekit.assets%/robot.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+		
+		<script>
+			// Register service worker for push notifications
+			if ('serviceWorker' in navigator && 'PushManager' in window) {
+				navigator.serviceWorker.register('/sw.js')
+					.then(registration => {
+						console.log('Service Worker registered:', registration);
+					})
+					.catch(error => {
+						console.error('Service Worker registration failed:', error);
+					});
+			}
+		</script>
+	</body>
+</html>

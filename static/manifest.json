@@ -1,0 +1,16 @@
+{
+    "name": "Mechmate - Maintenance Scheduler & Tracker",
+    "short_name": "Mechmate",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#101828",
+    "theme_color": "#101828",
+    "icons": [
+        {
+            "src": "/robot.png",
+            "type": "image/png",
+            "sizes": "any"
+        }
+    ],
+    "scope": "/"
+}
