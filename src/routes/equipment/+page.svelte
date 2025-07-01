@@ -240,7 +240,6 @@
   </main>
 </div>
 
-<!-- Modals -->
 <EditEquipmentModal 
   isOpen={showEditModal}
   equipment={selectedEquipment}

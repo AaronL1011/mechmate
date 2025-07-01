@@ -91,7 +91,7 @@
       handleTaskDeleted({ detail: selectedTask.id } as CustomEvent);
     } catch (err) {
       console.error('Error deleting task:', err);
-      // You could show an error message here
+      // Could show an error message here
     }
   }
   
@@ -262,7 +262,6 @@
   </main>
 </div>
 
-<!-- Modals -->
 <EditTaskModal 
   isOpen={showEditModal}
   task={selectedTask}

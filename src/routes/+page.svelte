@@ -33,12 +33,6 @@
     critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
   };
   
-  const statusColors = {
-    pending: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-    overdue: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-  };
-  
   // Calendar utility functions
   function getDaysInMonth(year: number, month: number): number {
     return new Date(year, month + 1, 0).getDate();
@@ -208,19 +202,18 @@
   function handleEquipmentCreated(event: CustomEvent) {
     const newEquipment = event.detail;
     equipment = [...equipment, newEquipment];
-    loadData(); // Refresh stats
+    loadData();
   }
   
   function handleTaskCreated(event: CustomEvent) {
     const newTask = event.detail;
     upcomingTasks = [...upcomingTasks, newTask];
-    loadData(); // Refresh stats
+    loadData();
   }
   
   function handleTaskCompleted(result: { updated_task: Task, maintenance_log: MaintenanceLog, message: string }) {
-    // Remove the completed task from the upcoming list
     upcomingTasks = upcomingTasks.filter(task => task.id !== result.updated_task.id);
-    loadData(); // Refresh stats and get updated task list
+    loadData();
   }
   
   function handleClickOutside(event: MouseEvent) {
@@ -234,7 +227,6 @@
     loadData();
     calendarDays = generateCalendarDays(currentDate);
     
-    // Add click outside handler for dropdown
     document.addEventListener('click', handleClickOutside);
     
     return () => {
@@ -284,10 +276,9 @@
         <div class="flex items-center gap-4">
           <img src="/robot.png" alt="mechmate" class="h-10 w-10"/>
           <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Mechmate</h1>
-          <!-- <p class="text-gray-600 dark:text-gray-300 text-sm lg:text-base">Maintenance Scheduler & Tracker</p> -->
         </div>
         <div class="flex items-center space-x-2 lg:space-x-4">
-          <!-- Notification Bell -->
+
           <NotificationBell />
           
           <div class="relative inline-flex rounded-lg shadow-sm split-button-container">
@@ -606,7 +597,6 @@
   </main>
 </div>
 
-<!-- Modals -->
 <AddEquipmentModal 
   isOpen={showAddEquipmentModal}
   {equipmentTypes}
