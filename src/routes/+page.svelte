@@ -5,26 +5,28 @@
   import AddTaskModal from '$lib/components/AddTaskModal.svelte';
   import CompleteTaskModal from '$lib/components/CompleteTaskModal.svelte';
   import NotificationBell from '$lib/components/NotificationBell.svelte';
+  import TimeRangeSelector from '$lib/components/TimeRangeSelector.svelte';
   
-  let stats: DashboardStats | null = null;
-  let upcomingTasks: Task[] = [];
-  let equipment: Equipment[] = [];
-  let equipmentTypes: EquipmentType[] = [];
-  let taskTypes: TaskType[] = [];
-  let loading = true;
-  let error = '';
-  let viewMode: 'list' | 'calendar' = 'list';
+  let stats: DashboardStats | null = $state(null);
+  let upcomingTasks: Task[] = $state([]);
+  let equipment: Equipment[] = $state([]);
+  let equipmentTypes: EquipmentType[] = $state([]);
+  let taskTypes: TaskType[] = $state([]);
+  let loading = $state(true);
+  let error = $state('');
+  let viewMode: 'list' | 'calendar' = $state('list');
+  let selectedDays = $state(90);
   
   // Calendar state
-  let currentDate = new Date();
-  let calendarDays: Date[] = [];
+  let currentDate = $state(new Date());
+  let calendarDays: Date[] = $state([]);
   
   // Modal states
-  let showAddEquipmentModal = false;
-  let showAddTaskModal = false;
-  let showCompleteTaskModal = false;
-  let selectedTask: Task | null = null;
-  let showDropdown = false;
+  let showAddEquipmentModal = $state(false);
+  let showAddTaskModal = $state(false);
+  let showCompleteTaskModal = $state(false);
+  let selectedTask: Task | null = $state(null);
+  let showDropdown = $state(false);
   
   const priorityColors = {
     low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
@@ -32,6 +34,11 @@
     high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
     critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
   };
+
+  function handleDaysChange(days: number) {
+    selectedDays = days;
+    loadData();
+  }
   
   // Calendar utility functions
   function getDaysInMonth(year: number, month: number): number {
@@ -156,7 +163,7 @@
       loading = true;
       const [statsRes, tasksRes, equipmentRes, taskTypesRes, equipmentTypesRes] = await Promise.all([
         fetch('/api/dashboard'),
-        fetch('/api/tasks?type=upcoming'),
+        fetch(`/api/tasks?type=upcoming&days=${selectedDays}`),
         fetch('/api/equipment'),
         fetch('/api/task-types'),
         fetch('/api/equipment-types')
@@ -222,6 +229,11 @@
       showDropdown = false;
     }
   }
+
+  function handleTimeRangeChange(days: number) {
+    selectedDays = days;
+    loadData();
+  }
   
   onMount(() => {
     loadData();
@@ -286,7 +298,7 @@
             <button 
               class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-l-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap border-r border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               disabled={!stats}
-              on:click={() => {
+              onclick={() => {
                 if (stats && stats.total_equipment > 0) {
                   showAddTaskModal = true
                 } else {
@@ -300,7 +312,7 @@
             <button 
               class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-2 py-2 rounded-r-lg font-medium transition-colors text-sm lg:text-base border-l border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               disabled={!stats}
-              on:click={() => showDropdown = !showDropdown}
+              onclick={() => showDropdown = !showDropdown}
               aria-label="Open menu"
               aria-expanded={showDropdown}
               aria-haspopup="true"
@@ -317,7 +329,7 @@
                   <button 
                     class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
                     disabled={stats?.total_equipment === 0}
-                    on:click={() => {
+                    onclick={() => {
                       if (stats && stats.total_equipment > 0) {
                         showAddEquipmentModal = true
                       } else {
@@ -348,7 +360,7 @@
     {:else if error}
       <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p class="text-red-800 dark:text-red-200">{error}</p>
-        <button on:click={loadData} class="mt-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline">
+        <button onclick={loadData} class="mt-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline">
           Try again
         </button>
       </div>
@@ -418,19 +430,22 @@
 
       <!-- View Mode Toggle -->
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Upcoming Tasks</h2>
+        <div class="flex items-center gap-4">
+          <h2 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Upcoming Tasks</h2>
+          <TimeRangeSelector onDaysChange={handleDaysChange} bind:selectedDays />
+        </div>
         <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
           <button 
             aria-label="List view"
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap {viewMode === 'list' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}"
-            on:click={() => viewMode = 'list'}
+            onclick={() => viewMode = 'list'}
           >
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H128a8,8,0,0,1,0-16h88A8,8,0,0,1,224,128ZM128,72h88a8,8,0,0,0,0-16H128a8,8,0,0,0,0,16Zm88,112H128a8,8,0,0,0,0,16h88a8,8,0,0,0,0-16ZM82.34,42.34,56,68.69,45.66,58.34A8,8,0,0,0,34.34,69.66l16,16a8,8,0,0,0,11.32,0l32-32A8,8,0,0,0,82.34,42.34Zm0,64L56,132.69,45.66,122.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm0,64L56,196.69,45.66,186.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z"></path></svg>
           </button>
           <button 
             aria-label="Calendar view"
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap {viewMode === 'calendar' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}"
-            on:click={() => viewMode = 'calendar'}
+            onclick={() => viewMode = 'calendar'}
           >
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"></path></svg>
           </button>
@@ -444,20 +459,20 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 256 256"><path d="M200,32H163.74a47.92,47.92,0,0,0-71.48,0H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm-72,0a32,32,0,0,1,32,32H96A32,32,0,0,1,128,32Zm72,184H56V48H82.75A47.93,47.93,0,0,0,80,64v8a8,8,0,0,0,8,8h80a8,8,0,0,0,8-8V64a47.93,47.93,0,0,0-2.75-16H200Z"></path></svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No upcoming maintenance</h3>
             {#if stats && stats.total_tasks > 0}
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">You're all up to date for the next 90 days, relax!</p>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">You're all up to date for the next {selectedDays} days, relax!</p>
             {:else}
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by adding some equipment and tasks.</p>
               <div class="mt-6 flex flex-col items-center gap-4">
                 <button 
                   class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors w-fit"
                   disabled={!stats}
-                  on:click={() => showAddEquipmentModal = true}
+                  onclick={() => showAddEquipmentModal = true}
                 >
                   {stats?.total_equipment === 0 ? "Add your first equipment" : "Add more equipment"}
                 </button>
                 <button 
                   class="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 disabled:opacity-25 text-white px-4 py-2 rounded-lg font-medium transition-colors w-fit"
-                  on:click={() => showAddTaskModal = true}
+                  onclick={() => showAddTaskModal = true}
                   disabled={!stats || (stats !== null && stats?.total_equipment === 0)}
                 >
                   Add your first task
@@ -517,7 +532,7 @@
                       </div>
                       <button 
                         class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-                        on:click={() => openCompleteTaskModal(task)}
+                        onclick={() => openCompleteTaskModal(task)}
                       >
                         Complete
                       </button>
@@ -537,7 +552,7 @@
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Calendar View</h3>
               <div class="flex space-x-2">
                 <button
-                  on:click={previousMonth}
+                  onclick={previousMonth}
                   class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded transition-colors"
                 >
                   ←
@@ -546,7 +561,7 @@
                   {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
                 <button
-                  on:click={nextMonth}
+                  onclick={nextMonth}
                   class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded transition-colors"
                 >
                   →
@@ -578,9 +593,9 @@
                         aria-label="Complete task"
                         role="button"
                         tabindex="0"
-                        on:keydown={(e) => e.key === 'Enter' && openCompleteTaskModal(task)}
+                        onkeydown={(e) => e.key === 'Enter' && openCompleteTaskModal(task)}
                         class="text-xs p-1 rounded truncate cursor-pointer transition-colors {isOverdue ? 'bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-200 hover:bg-red-300 dark:hover:bg-red-900/50' : 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 hover:bg-yellow-300 dark:hover:bg-yellow-900/50'}"
-                        on:click={() => openCompleteTaskModal(task)}
+                        onclick={() => openCompleteTaskModal(task)}
                         title="{task.title} - {getEquipmentName(task.equipment_id)}"
                       >
                         {task.title} - {getEquipmentName(task.equipment_id)}

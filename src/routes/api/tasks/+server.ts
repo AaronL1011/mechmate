@@ -8,7 +8,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     const type = url.searchParams.get('type');
     
     if (type === 'upcoming') {
-      const days = parseInt(url.searchParams.get('days') || '90');
+      const daysParam = url.searchParams.get('days');
+      const days = daysParam ? parseInt(daysParam) : 90;
+      
+      // Validate days parameter
+      if (isNaN(days) || days < 1) {
+        return json({ error: 'Days parameter must be a positive number' }, { status: 400 });
+      }
+      
       const tasks = await taskRepository.getUpcoming(locals.db, days);
       return json(tasks);
     }
