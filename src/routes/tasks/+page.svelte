@@ -140,7 +140,7 @@
       </a>
       <div>
         <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Task Management</h1>
-        <p class="text-gray-600 dark:text-gray-300">Manage and delete your maintenance tasks</p>
+        <p class="text-gray-600 dark:text-gray-300">Inspect, modify or erase current tasks</p>
       </div>
     </div>
   </header>

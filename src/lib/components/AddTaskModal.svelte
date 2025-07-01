@@ -107,7 +107,7 @@
 
 {#if isOpen}
   <div class="fixed flex items-center justify-center inset-0 bg-gray-600/50 dark:bg-gray-900/50 backdrop-blur-sm overflow-y-auto h-dvh w-full z-50" onclick={handleBackdropClick} role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => e.key === 'Escape' && closeModal()}>
-    <div class="relative p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg dark:shadow-gray-900/50 rounded-md bg-white dark:bg-gray-800 h-fit max-h-[90vh] overflow-y-auto">
+    <div class="relative p-5 border border-gray-200 dark:border-gray-700 max-w-xl shadow-lg dark:shadow-gray-900/50 rounded-md bg-white dark:bg-gray-800 h-fit max-h-[90vh] overflow-y-auto">
       <div class="mt-3">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Task</h3>

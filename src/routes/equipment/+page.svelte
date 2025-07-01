@@ -126,7 +126,7 @@
       </a>
       <div>
         <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Equipment Management</h1>
-        <p class="text-gray-600 dark:text-gray-300">Manage your equipment inventory</p>
+        <p class="text-gray-600 dark:text-gray-300">Track inventory and export service history</p>
       </div>
     </div>
   </header>
