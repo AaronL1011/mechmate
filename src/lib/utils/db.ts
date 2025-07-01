@@ -309,7 +309,7 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 			data_type: 'integer' as const,
 			description: 'Number of days to look ahead for upcoming tasks',
 			default_value: '90',
-			min_value: '7',
+			min_value: '1',
 			max_value: '365'
 		}
 	];

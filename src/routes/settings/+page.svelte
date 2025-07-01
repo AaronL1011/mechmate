@@ -2,11 +2,12 @@
   import { onMount } from 'svelte';
   import type { GlobalSettingsValues, NotificationSettingsDisplay } from '$lib/types/db.js';
 
-  let loading = false;
+  let appLoading = false;
+  let notificationLoading = false;
   let appError = '';
   let appSuccess = false;
   let notificationError = '';
-  let notificationSuccess = false
+  let notificationSuccess = '';
   let settings: GlobalSettingsValues = {
     upcoming_task_range_days: 90
   };
@@ -49,7 +50,7 @@
 
   async function loadSettings() {
     try {
-      loading = true;
+      appLoading = true;
       appError = '';
       
       const response = await fetch('/api/settings');
@@ -63,7 +64,7 @@
       appError = 'Failed to load settings';
       console.error(err);
     } finally {
-      loading = false;
+      appLoading = false;
     }
   }
 
@@ -174,7 +175,8 @@
           throw new Error('Failed to register push subscription');
         }
 
-        notificationSuccess = true;
+        notificationSuccess = 'Push notifications enabled successfully!';
+        setTimeout(() => notificationSuccess = '', 3000);
         await loadNotificationSettings(); // Refresh subscription list
       }
     } catch (err) {
@@ -200,7 +202,8 @@
         }
 
         pushSubscription = null;
-        notificationSuccess = true;
+        notificationSuccess = 'Push notifications disabled successfully!';
+        setTimeout(() => notificationSuccess = '', 3000);
         await loadNotificationSettings(); // Refresh subscription list
       }
     } catch (err) {
@@ -211,7 +214,7 @@
 
   async function saveNotificationSettings() {
     try {
-      loading = true;
+      notificationLoading = true;
       notificationError = '';
 
       const response = await fetch('/api/notifications/settings', {
@@ -226,14 +229,14 @@
 
       const data = await response.json();
       notificationSettings = data.settings;
-      notificationSuccess = true;
-      setTimeout(() => notificationSuccess = false, 3000);
+      notificationSuccess = 'Notification settings updated successfully!';
+      setTimeout(() => notificationSuccess = '', 3000);
 
     } catch (err) {
       notificationError = 'Failed to save notification settings';
       console.error('Save error:', err);
     } finally {
-      loading = false;
+      notificationLoading = false;
     }
   }
 
@@ -257,7 +260,7 @@
 
   async function addCurrentDevice() {
     try {
-      loading = true;
+      notificationLoading = true;
       notificationError = '';
 
       // Request permission if not granted
@@ -265,7 +268,7 @@
         await requestNotificationPermission();
         if (notificationPermission !== 'granted') {
           notificationError = 'Notification permission is required to add this device';
-          loading = false;
+          notificationLoading = false;
           return;
         }
       }
@@ -279,13 +282,13 @@
       notificationError = 'Failed to add this device';
       console.error('Add device error:', err);
     } finally {
-      loading = false;
+      notificationLoading = false;
     }
   }
 
   async function sendTestNotification() {
     try {
-      loading = true;
+      notificationLoading = true;
       notificationError = '';
 
       const response = await fetch('/api/notifications/test', {
@@ -297,12 +300,13 @@
       }
 
       const data = await response.json();
-      notificationSuccess = true;
-    } catch (err) {
+      notificationSuccess = data.message;
+      setTimeout(() => notificationSuccess = '', 3000);
+      } catch (err) {
       notificationError = 'Failed to send test notification';
       console.error('Test notification error:', err);
     } finally {
-      loading = false;
+      notificationLoading = false;
     }
   }
 
@@ -312,7 +316,7 @@
     }
 
     try {
-      loading = true;
+      notificationLoading = true;
       notificationError = '';
 
       // Check if this is the current device's subscription
@@ -333,14 +337,15 @@
           throw new Error('Failed to delete subscription');
         }
 
-        notificationSuccess = true;
+        notificationSuccess = 'Device removed successfully';
+        setTimeout(() => notificationSuccess = '', 3000);
         await loadNotificationSettings(); // Refresh the subscription list
       }
     } catch (err) {
       notificationError = 'Failed to remove device';
       console.error('Delete subscription error:', err);
     } finally {
-      loading = false;
+      notificationLoading = false;
     }
   }
 
@@ -384,7 +389,7 @@
 
   async function saveSettings() {
     try {
-      loading = true;
+      appLoading = true;
       appError = '';
       appSuccess = false;
 
@@ -414,7 +419,7 @@
       appError = err instanceof Error ? err.message : 'Failed to save settings';
       console.error(err);
     } finally {
-      loading = false;
+      appLoading = false;
     }
   }
 
@@ -454,7 +459,7 @@
   </header>
 
   <main class="max-w-4xl mx-auto">
-    {#if loading && !settings}
+    {#if appLoading && !settings}
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
       </div>
@@ -476,13 +481,13 @@
                 id="upcoming_task_range_days"
                 name="upcoming_task_range_days"
                 bind:value={formValues.upcoming_task_range_days}
-                min="7"
+                min="1"
                 max="365"
                 required
                 class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Number of days to look ahead for upcoming tasks (7-365 days). Currently set to {settings.upcoming_task_range_days} days.
+                Number of days to look ahead for upcoming tasks (1-365 days). Currently set to {settings.upcoming_task_range_days} days.
               </p>
             </div>
           </div>
@@ -525,10 +530,10 @@
         
         <button
         type="submit"
-        disabled={loading || !hasChanges}
+        disabled={appLoading || !hasChanges}
         class="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-        {#if loading}
+        {#if appLoading}
         <div class="flex items-center">
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
           Saving...
@@ -550,13 +555,13 @@
    <!-- Messages -->
    {#if notificationError}
    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mx-4 mt-4">
-     <p class="text-red-800 dark:text-red-200">{appError}</p>
+     <p class="text-red-800 dark:text-red-200">{notificationError}</p>
    </div>
    {/if}
    
    {#if notificationSuccess}
    <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mx-4 mt-4">
-     <p class="text-green-800 dark:text-green-200">Application settings saved successfully!</p>
+     <p class="text-green-800 dark:text-green-200">{notificationSuccess}</p>
    </div>
    {/if}
 
@@ -577,6 +582,32 @@
         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
       </label>
     </div>
+
+    <!-- Add Current Device Button -->
+    {#if !currentDeviceHasSubscription}
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h5 class="text-sm font-medium text-blue-900 dark:text-blue-200">Add This Device</h5>
+          <p class="text-sm text-blue-700 dark:text-blue-300">This device is not receiving notifications yet</p>
+        </div>
+        <button
+          class="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 whitespace-nowrap"
+          on:click={addCurrentDevice}
+          disabled={notificationLoading}
+        >
+          {#if notificationLoading}
+            <div class="flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Adding...
+            </div>
+          {:else}
+            Add Device
+          {/if}
+        </button>
+      </div>
+    </div>
+  {/if}
 
     <!-- Permission Status -->
     <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
@@ -682,32 +713,6 @@
     <div class="space-y-4 p-6 ">
       <h4 class="text-sm font-medium text-gray-900 dark:text-white">Active Devices</h4>
       <p class="text-sm text-gray-600 dark:text-gray-400">Notifications will be sent to these devices</p>
-
-      <!-- Add Current Device Button -->
-      {#if !currentDeviceHasSubscription}
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-          <div class="flex items-center justify-between gap-2">
-            <div>
-              <h5 class="text-sm font-medium text-blue-900 dark:text-blue-200">Add This Device</h5>
-              <p class="text-sm text-blue-700 dark:text-blue-300">This device is not receiving notifications yet</p>
-            </div>
-            <button
-              class="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 whitespace-nowrap"
-              on:click={addCurrentDevice}
-              disabled={loading}
-            >
-              {#if loading}
-                <div class="flex items-center">
-                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Adding...
-                </div>
-              {:else}
-                Add Device
-              {/if}
-            </button>
-          </div>
-        </div>
-      {/if}
         
       {#if subscriptions.length > 0}
         <div class="space-y-2">
@@ -731,7 +736,7 @@
                 <button
                   class="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
                   on:click={() => deleteSubscription(subscription.id)}
-                  disabled={loading}
+                  disabled={notificationLoading}
                   aria-label="Remove device"
                   title="Remove this device"
                 >
@@ -759,9 +764,9 @@
           <button
             class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
             on:click={sendTestNotification}
-            disabled={loading}
+            disabled={notificationLoading}
           >
-            {#if loading}
+            {#if notificationLoading}
               <div class="flex items-center justify-center">
                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 dark:border-gray-300 mr-2"></div>
                 Sending...
