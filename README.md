@@ -26,19 +26,44 @@ A personal maintenance scheduler and tracker app for DIY and mechanical enthusia
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Domain name with SSL certificates (for production)
+- Docker and/or Docker Compose
+- Domain name with SSL certificates (notifications will not function in an unsecure browser environment)
 
 ### Installation
+
+## With Docker
 
 1. Clone the repository and navigate to the project directory
 2. Build and start the application:
 
 ```bash
-docker-compose up -d mechmate
+docker build -t mechmate .
+
+docker run -d -p 3000:3000 -v path_to_your_volume_folder:/app/data mechmate
 ```
 
-3. Access the application at `https://mechmate.syd.shroomape.com` (or your configured domain)
+3. Access the application at `http://localhost:3000` (or otherwise configured port / domain)
+
+## With Docker Compose
+
+1. Include the following configuration in your docker-compose.yml file:
+```yml
+mechmate:
+    build: ./mechmate
+    container_name: mechmate
+    volumes:
+      - ./mechmate/data:/app/data
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+```
+2. Build and run the app with:
+```bash
+docker compose up -d mechmate
+```
+3. Access the application at `http://localhost:3000` (or otherwise configured port / domain)
+
 
 ### Development
 
@@ -58,7 +83,7 @@ The application will be available at `http://localhost:5173`
 - Basic information (name, type, make, model, year)
 - Usage tracking (current value, unit)
 - Flexible metadata storage (JSON)
-- Tagging support
+- ~~Tagging support~~ (coming soon)
 
 ### Tasks
 - Equipment association
@@ -69,7 +94,7 @@ The application will be available at `http://localhost:5173`
 ### Maintenance Logs
 - Completion tracking with metadata
 - Cost and parts tracking
-- File attachment support
+- ~~File attachment support~~ (coming soon)
 - Service provider information
 
 ## API Endpoints
@@ -91,6 +116,7 @@ The application will be available at `http://localhost:5173`
 - `GET /api/tasks?type=upcoming` - Get upcoming tasks
 - `GET /api/tasks?type=overdue` - Get overdue tasks
 - `POST /api/tasks` - Create new task
+- `POST /api/tasks/complete` - Mark a task complete and generate a log entry
 
 ### Task Types
 - `GET /api/task-types` - List predefined task types
@@ -100,14 +126,14 @@ The application will be available at `http://localhost:5173`
 
 ## Configuration
 
-The application uses environment variables for configuration:
+The application defined a few environment variables in the Dockerfile for configuration:
 
 - `NODE_ENV`: Environment (development/production)
-- `PORT`: Application port (default: 3000)
+- `ORIGIN`: Application origin domain
 
 ## Data Persistence
 
-The SQLite database is stored in the `./mechmate/data/` directory and is automatically created on first run. The database file is persisted through Docker volumes.
+The SQLite database directory is mounted as a volume at `/app/data/`. If a file doesn't already exist in the mounted directory, it will be created on first run of the app server.
 
 ## License
 
