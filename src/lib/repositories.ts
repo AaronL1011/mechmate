@@ -24,12 +24,17 @@ import type {
 	NewNotificationLog,
 	NotificationSettingsRequest,
 	NotificationSettingsDisplay,
-	PushSubscriptionData
+	PushSubscriptionData,
+	GlobalSetting,
+	NewGlobalSetting,
+	GlobalSettingUpdate,
+	GlobalSettingsValues,
+	UpdateGlobalSettingRequest
 } from './types/db.js';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
-// Helper functions for boolean/integer conversion
+// Helper functions for notification boolean/integer conversion
 function convertSettingsToDisplay(settings: NotificationSettings): NotificationSettingsDisplay {
 	return {
 		id: settings.id,
@@ -58,6 +63,120 @@ function convertRequestToDb(request: NotificationSettingsRequest) {
 		threshold_overdue_daily: request.threshold_overdue_daily ? 1 : 0
 	};
 }
+
+// Helper functions for global settings type conversion
+function convertSettingValue<T>(value: string, dataType: string, defaultValue: T): T {
+	try {
+		switch (dataType) {
+			case 'integer':
+				return Number(value) as T;
+			case 'boolean':
+				return (value === 'true' || value === '1') as T;
+			case 'json':
+				return JSON.parse(value) as T;
+			case 'string':
+			default:
+				return value as T;
+		}
+	} catch {
+		return defaultValue;
+	}
+}
+
+function getDefaultSettings(): GlobalSettingsValues {
+	return {
+		upcoming_task_range_days: 90
+	};
+}
+
+// Global Settings Repository
+export const globalSettingsRepository = {
+	getAll: (db: Kysely<Database>): Promise<GlobalSetting[]> => {
+		return db.selectFrom('global_settings').selectAll().orderBy('setting_key').execute();
+	},
+
+	getByKey: (db: Kysely<Database>, key: string): Promise<GlobalSetting | undefined> => {
+		return db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
+	},
+
+	getTypedValue: async <T>(db: Kysely<Database>, key: string, defaultValue: T): Promise<T> => {
+		const setting = await db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
+		
+		if (!setting) return defaultValue;
+		
+		return convertSettingValue(setting.setting_value, setting.data_type, defaultValue);
+	},
+
+	getAllAsObject: async (db: Kysely<Database>): Promise<GlobalSettingsValues> => {
+		const settings = await db.selectFrom('global_settings').selectAll().execute();
+		
+		const result: any = {};
+		for (const setting of settings) {
+			result[setting.setting_key] = convertSettingValue(
+				setting.setting_value, 
+				setting.data_type, 
+				setting.default_value
+			);
+		}
+		
+		// Merge with defaults for any missing settings
+		return { ...getDefaultSettings(), ...result };
+	},
+
+	updateByKey: async (db: Kysely<Database>, key: string, value: string): Promise<GlobalSetting | undefined> => {
+		return db
+			.updateTable('global_settings')
+			.set({ 
+				setting_value: value, 
+				updated_at: sql`CURRENT_TIMESTAMP` 
+			})
+			.where('setting_key', '=', key)
+			.returningAll()
+			.executeTakeFirst();
+	},
+
+	validateSetting: async (db: Kysely<Database>, key: string, value: string): Promise<{ valid: boolean; error?: string }> => {
+		const setting = await db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
+		
+		if (!setting) {
+			return { valid: false, error: 'Setting not found' };
+		}
+
+		// Type validation
+		try {
+			switch (setting.data_type) {
+				case 'integer': {
+					const numValue = Number(value);
+					if (isNaN(numValue) || !Number.isInteger(numValue)) {
+						return { valid: false, error: 'Value must be an integer' };
+					}
+					
+					// Range validation
+					if (setting.min_value && numValue < Number(setting.min_value)) {
+						return { valid: false, error: `Value must be at least ${setting.min_value}` };
+					}
+					if (setting.max_value && numValue > Number(setting.max_value)) {
+						return { valid: false, error: `Value must be at most ${setting.max_value}` };
+					}
+					break;
+				}
+				case 'boolean':
+					if (!['true', 'false', '0', '1'].includes(value)) {
+						return { valid: false, error: 'Value must be true, false, 0, or 1' };
+					}
+					break;
+				case 'json':
+					JSON.parse(value); // Will throw if invalid
+					break;
+				// string type needs no special validation
+			}
+		} catch (error) {
+			return { valid: false, error: `Invalid ${setting.data_type} value` };
+		}
+
+		return { valid: true };
+	}
+};
 
 // Equipment Repository
 export const equipmentRepository = {
@@ -245,7 +364,8 @@ export const taskRepository = {
 		};
 	},
 
-	getUpcoming: (db: Kysely<Database>, days: number = 90): Promise<Task[]> => {
+	getUpcoming: async (db: Kysely<Database>, customDays?: number): Promise<Task[]> => {
+		const days = customDays ?? await globalSettingsRepository.getTypedValue(db, 'upcoming_task_range_days', 90);
 		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 		return db
 			.selectFrom('tasks')
@@ -260,8 +380,6 @@ export const taskRepository = {
 			.orderBy('next_due_date')
 			.orderBy('next_due_usage_value')
 			.execute();
-
-		// return Promise.resolve([]);
 	},
 
 	getOverdue: (db: Kysely<Database>): Promise<Task[]> => {
@@ -408,7 +526,8 @@ export const maintenanceLogRepository = {
 // Dashboard Repository
 export const dashboardRepository = {
 	getStats: async (db: Kysely<Database>): Promise<DashboardStats> => {
-		const futureDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		const days = await globalSettingsRepository.getTypedValue(db, 'upcoming_task_range_days', 90);
+		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 		const today = new Date().toISOString().split('T')[0];
 		
 		const [equipmentCount, taskCount, upcomingCount, overdueCount] = await Promise.all([

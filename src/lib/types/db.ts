@@ -10,6 +10,7 @@ export interface Database {
 	notification_subscriptions: NotificationSubscriptionsTable;
 	notification_settings: NotificationSettingsTable;
 	notification_log: NotificationLogTable;
+	global_settings: GlobalSettingsTable;
 }
 
 export interface EquipmentTable {
@@ -283,4 +284,44 @@ export interface NotificationSettingsDisplay {
 	threshold_overdue_daily: boolean;
 	created_at: Date;
 	updated_at: Date;
+}
+
+// Global Settings Tables
+export interface GlobalSettingsTable {
+	id: Generated<number>;
+	setting_key: string;
+	setting_value: string;
+	data_type: 'integer' | 'boolean' | 'string' | 'json';
+	description?: string;
+	default_value: string;
+	min_value?: string;
+	max_value?: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type GlobalSetting = Selectable<GlobalSettingsTable>;
+export type NewGlobalSetting = Insertable<GlobalSettingsTable>;
+export type GlobalSettingUpdate = Updateable<GlobalSettingsTable>;
+
+// Application-Level Global Settings Types
+export interface GlobalSettingsValues {
+	upcoming_task_range_days: number;
+}
+
+export interface UpdateGlobalSettingRequest {
+	setting_key: string;
+	setting_value: string;
+}
+
+export interface GlobalSettingDefinition {
+	key: string;
+	dataType: 'integer' | 'boolean' | 'string' | 'json';
+	defaultValue: any;
+	description: string;
+	validation?: {
+		min?: number | string;
+		max?: number | string;
+		allowedValues?: any[];
+	};
 }

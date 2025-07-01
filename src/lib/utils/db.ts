@@ -146,6 +146,25 @@ export async function initializeTables(db: Kysely<Database>) {
 	// Notification indexes
 	await db.schema.createIndex('idx_notification_subscriptions_endpoint').ifNotExists().on('notification_subscriptions').column('endpoint').execute();
 	await db.schema.createIndex('idx_notification_log_task_threshold').ifNotExists().on('notification_log').columns(['task_id', 'threshold_type', 'notification_date']).execute();
+
+	// Global Settings table
+	await db.schema
+		.createTable('global_settings')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('setting_key', 'text', (col) => col.notNull().unique())
+		.addColumn('setting_value', 'text', (col) => col.notNull())
+		.addColumn('data_type', 'text', (col) => col.notNull().check(sql`data_type IN ('integer', 'boolean', 'string', 'json')`))
+		.addColumn('description', 'text')
+		.addColumn('default_value', 'text', (col) => col.notNull())
+		.addColumn('min_value', 'text')
+		.addColumn('max_value', 'text')
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('updated_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.execute();
+
+	// Global Settings indexes
+	await db.schema.createIndex('idx_global_settings_key').ifNotExists().on('global_settings').column('setting_key').execute();
 }
 
 export async function seedData(db: Kysely<Database>) {
@@ -153,6 +172,7 @@ export async function seedData(db: Kysely<Database>) {
 		await seedEquipmentTypes(txn);
 		await seedTaskTypes(txn);
 		await seedNotificationSettings(txn);
+		await seedGlobalSettings(txn);
 	});
 }
 
@@ -276,6 +296,27 @@ async function seedNotificationSettings(txn: Transaction<Database>) {
 	await txn
 		.insertInto('notification_settings')
 		.values(defaultSettings)
+		.onConflict((oc) => oc.doNothing())
+		.execute();
+}
+
+async function seedGlobalSettings(txn: Transaction<Database>) {
+	// Create default global settings
+	const defaultGlobalSettings = [
+		{
+			setting_key: 'upcoming_task_range_days',
+			setting_value: '90',
+			data_type: 'integer' as const,
+			description: 'Number of days to look ahead for upcoming tasks',
+			default_value: '90',
+			min_value: '7',
+			max_value: '365'
+		}
+	];
+
+	await txn
+		.insertInto('global_settings')
+		.values(defaultGlobalSettings)
 		.onConflict((oc) => oc.doNothing())
 		.execute();
 }

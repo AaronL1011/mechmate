@@ -129,28 +129,23 @@
   <title>Task Management - Mechmate</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 py-8">
   <!-- Header -->
-  <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center py-6">
-        <div>
-          <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Task Management</h1>
-          <p class="text-gray-600 dark:text-gray-300 text-sm lg:text-base">Manage your maintenance tasks</p>
-        </div>
-        <div class="flex space-x-4">
-          <a 
-            href="/"
-            class="bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap"
-          >
-            Back to Dashboard
-          </a>
-        </div>
+  <header class="max-w-7xl mx-auto mb-8">
+    <div class="flex items-center gap-4 mb-4">
+      <a href="/" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" aria-label="return to dashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+          <path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Task Management</h1>
+        <p class="text-gray-600 dark:text-gray-300">Manage and delete your maintenance tasks</p>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="max-w-7xl mx-auto">
     {#if loading}
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
@@ -177,7 +172,7 @@
         </div>
       </div>
     {:else}
-      <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/20 overflow-hidden sm:rounded-md">
+      <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/20 overflow-hidden rounded-lg">
         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
           {#each tasks as task}
             {@const equipmentName = getEquipmentName(task.equipment_id)}
