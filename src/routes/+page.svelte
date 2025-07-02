@@ -449,7 +449,7 @@
         <div class="flex items-center gap-3 items-center">
           <h2 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Upcoming Tasks</h2>
           {#if settings?.upcoming_task_range_days}
-            <p class="text-sm text-gray-400">{settings.upcoming_task_range_days} days</p>
+            <p class="text-sm text-gray-400 translate-y-0.5">{settings.upcoming_task_range_days} days</p>
           {/if}
         </div>
         <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">

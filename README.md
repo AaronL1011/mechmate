@@ -11,6 +11,7 @@ A personal maintenance scheduler and tracker app for DIY and mechanical enthusia
 - **Recurring Tasks**: Set up tasks that repeat based on usage or time intervals
 - **Maintenance History**: Complete audit trail of all maintenance performed
 - **Dashboard Overview**: Personalized view of upcoming and overdue maintenance
+- **Task Notifications**: Push notifications to compatible devices to remind you of upcoming tasks
 - **File Attachments**: Attach invoices, photos, and documentation to maintenance logs
 - **Beautiful UI**: Modern, responsive interface built with SvelteKit and Tailwind CSS
 
@@ -19,6 +20,7 @@ A personal maintenance scheduler and tracker app for DIY and mechanical enthusia
 - **Frontend**: SvelteKit 5 with TypeScript
 - **Styling**: Tailwind CSS 4
 - **Database**: SQLite with better-sqlite3 and Kysely
+- **Notifications**: web-push
 - **Deployment**: Docker with nginx reverse proxy
 - **SSL**: Automatic HTTPS with Let's Encrypt
 
