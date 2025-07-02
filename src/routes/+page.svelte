@@ -311,13 +311,62 @@
             </svg>
           </a>
           
-          <button 
-            class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-            disabled={!stats}
-            onclick={() => showQuickAddModal = true}
-          >
-            Quick Add
-          </button>
+          <div class="relative inline-flex rounded-lg shadow-sm split-button-container">
+            <!-- Main button -->
+            <button 
+              class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-l-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap border-r border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              disabled={!stats}
+              onclick={() => {
+                showQuickAddModal = true;
+              }}
+            >
+              Quick Add
+            </button>
+            <!-- Dropdown toggle -->
+            <button 
+              class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-2 py-2 rounded-r-lg font-medium transition-colors text-sm lg:text-base border-l border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              disabled={!stats}
+              onclick={() => showDropdown = !showDropdown}
+              aria-label="Open menu"
+              aria-expanded={showDropdown}
+              aria-haspopup="true"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            
+            <!-- Dropdown menu -->
+            {#if showDropdown}
+              <div class="absolute right-0 top-[110%] mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                <div class="">
+                  <button 
+                    class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
+                    disabled={stats?.total_equipment === 0}
+                    onclick={() => {
+                      showAddTaskModal = true
+                      showDropdown = false
+                    }}
+                  >
+  
+                      Add Task
+                  </button>
+                </div>
+                <div class="">
+                  <button 
+                    class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
+                    disabled={stats?.total_equipment === 0}
+                    onclick={() => {
+                      showAddEquipmentModal = true
+                      showDropdown = false
+                    }}
+                  >
+                      Add Equipment
+                  </button>
+                </div>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </div>

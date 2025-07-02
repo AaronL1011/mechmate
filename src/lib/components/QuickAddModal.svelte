@@ -23,7 +23,7 @@
   let validationErrors = $state<string[]>([]);
   let readyToCreate = $state(false);
 
-  let textareaElement: HTMLTextAreaElement;
+  let textareaElement: HTMLTextAreaElement | null = $state(null);
 
   $effect(() => {
     if (isOpen && textareaElement && workflowContext && currentStep) {
@@ -258,7 +258,7 @@
     
     switch (context) {
       case 'vehicle':
-        nextPrompt = "Which vehicle? (e.g., '2015 Honda Civic')";
+        nextPrompt = "Which vehicle?";
         quickOptions = [
           { label: "Honda Civic", value: "Honda Civic", icon: "🚗" },
           { label: "Toyota Camry", value: "Toyota Camry", icon: "🚗" },
@@ -266,7 +266,7 @@
         ];
         break;
       case 'tool':
-        nextPrompt = "What tool or equipment? (e.g., 'Cordless drill')";
+        nextPrompt = "What tool or equipment?";
         quickOptions = [
           { label: "Drill", value: "Drill", icon: "🔧" },
           { label: "Saw", value: "Saw", icon: "🪚" },
@@ -274,7 +274,7 @@
         ];
         break;
       case 'appliance':
-        nextPrompt = "What appliance? (e.g., 'Refrigerator')";
+        nextPrompt = "What appliance?";
         quickOptions = [
           { label: "Refrigerator", value: "Refrigerator", icon: "🧊" },
           { label: "Washer", value: "Washing machine", icon: "🧺" },
@@ -282,7 +282,7 @@
         ];
         break;
       case 'task':
-        nextPrompt = "What maintenance task? (e.g., 'Oil change every 3000 km')";
+        nextPrompt = "What maintenance task?";
         quickOptions = [
           { label: "Oil Change", value: "Oil change", icon: "🛢️" },
           { label: "Tire Rotation", value: "Tire rotation", icon: "🛞" },
@@ -357,7 +357,7 @@
       // Restore previous step state based on workflow and step
       if (workflowContext === 'vehicle') {
         if (currentStep === 1) {
-          nextPrompt = "Which vehicle? (e.g., '2015 Honda Civic')";
+          nextPrompt = "Which vehicle?";
           quickOptions = [
             { label: "Honda Civic", value: "Honda Civic", icon: "🚗" },
             { label: "Toyota Camry", value: "Toyota Camry", icon: "🚗" },
@@ -381,7 +381,7 @@
         }
       } else if (workflowContext === 'tool') {
         if (currentStep === 1) {
-          nextPrompt = "What tool or equipment? (e.g., 'Cordless drill')";
+          nextPrompt = "What tool or equipment?";
           quickOptions = [
             { label: "Drill", value: "Drill", icon: "🔧" },
             { label: "Saw", value: "Saw", icon: "🪚" },
@@ -400,7 +400,7 @@
         }
       } else if (workflowContext === 'appliance') {
         if (currentStep === 1) {
-          nextPrompt = "What appliance? (e.g., 'Refrigerator')";
+          nextPrompt = "What appliance?";
           quickOptions = [
             { label: "Refrigerator", value: "Refrigerator", icon: "🧊" },
             { label: "Washer", value: "Washing machine", icon: "🧺" },
@@ -411,7 +411,7 @@
         }
       } else if (workflowContext === 'task') {
         if (currentStep === 1) {
-          nextPrompt = "What maintenance task? (e.g., 'Oil change every 3000 km')";
+          nextPrompt = "What maintenance task?";
           quickOptions = [
             { label: "Oil Change", value: "Oil change", icon: "🛢️" },
             { label: "Tire Rotation", value: "Tire rotation", icon: "🛞" },
@@ -487,6 +487,7 @@
       <textarea
         bind:this={textareaElement}
         bind:value={input}
+        rows={3}
         placeholder={getContextPlaceholder(workflowContext)}
         class="resize-none w-full px-6 py-4 text-md lg:text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 transition-colors"
         onkeydown={handleKeyDown}
