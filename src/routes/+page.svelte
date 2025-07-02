@@ -4,6 +4,7 @@
   import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
   import AddTaskModal from '$lib/components/AddTaskModal.svelte';
   import CompleteTaskModal from '$lib/components/CompleteTaskModal.svelte';
+  import QuickAddModal from '$lib/components/QuickAddModal.svelte';
   
   let stats: DashboardStats | null = $state(null);
   let upcomingTasks: Task[] = $state([]);
@@ -24,6 +25,7 @@
   let showAddEquipmentModal = $state(false);
   let showAddTaskModal = $state(false);
   let showCompleteTaskModal = $state(false);
+  let showQuickAddModal = $state(false);
   let selectedTask: Task | null = $state(null);
   let showDropdown = $state(false);
   
@@ -309,60 +311,13 @@
             </svg>
           </a>
           
-          <div class="relative inline-flex rounded-lg shadow-sm split-button-container">
-            <!-- Main button -->
-            <button 
-              class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-l-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap border-r border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              disabled={!stats}
-              onclick={() => {
-                if (stats && stats.total_equipment > 0) {
-                  showAddTaskModal = true
-                } else {
-                  showAddEquipmentModal = true
-                }
-              }}
-            >
-              {stats && stats.total_equipment === 0 ? "Add Equipment" : "Add Task" }
-            </button>
-            <!-- Dropdown toggle -->
-            <button 
-              class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-2 py-2 rounded-r-lg font-medium transition-colors text-sm lg:text-base border-l border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              disabled={!stats}
-              onclick={() => showDropdown = !showDropdown}
-              aria-label="Open menu"
-              aria-expanded={showDropdown}
-              aria-haspopup="true"
-            >
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-              </svg>
-            </button>
-            
-            <!-- Dropdown menu -->
-            {#if showDropdown}
-              <div class="absolute right-0 top-[110%] mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-                <div class="">
-                  <button 
-                    class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
-                    disabled={stats?.total_equipment === 0}
-                    onclick={() => {
-                      if (stats && stats.total_equipment > 0) {
-                        showAddEquipmentModal = true
-                      } else {
-                        showAddTaskModal = true
-                      }
-                      showDropdown = false
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M240,192h-8V98.67a16,16,0,0,0-7.12-13.31l-88-58.67a16,16,0,0,0-17.75,0l-88,58.67A16,16,0,0,0,24,98.67V192H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM40,98.67,128,40l88,58.66V192H192V136a8,8,0,0,0-8-8H72a8,8,0,0,0-8,8v56H40ZM176,144v16H136V144Zm-56,16H80V144h40ZM80,176h40v16H80Zm56,0h40v16H136Z"></path>
-                    </svg>
-                      {stats && stats.total_equipment === 0 ? "Add Task" : "Add Equipment" }
-                  </button>
-                </div>
-              </div>
-            {/if}
-          </div>
+          <button 
+            class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            disabled={!stats}
+            onclick={() => showQuickAddModal = true}
+          >
+            Quick Add
+          </button>
         </div>
       </div>
     </div>
@@ -652,4 +607,12 @@
   {equipment}
   taskCompleted={handleTaskCompleted}
   onCloseModal={() => showCompleteTaskModal = false}
+/>
+
+<QuickAddModal 
+  isOpen={showQuickAddModal}
+  {equipment}
+  {taskTypes}
+  {equipmentTypes}
+  onClose={() => showQuickAddModal = false}
 />
