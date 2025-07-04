@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/utils/db.js';
 import { llmService } from '$lib/services/llm.js';
 import { FunctionExecutor, allFunctions, type ActionResult } from '$lib/services/functions.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +18,7 @@ interface QuickEditResponse {
 }
 
 // Store pending actions in memory (in production, use Redis or database)
-const pendingActions = new Map<string, ActionResult>();
+const _pendingActions = new Map<string, ActionResult>();
 
 const SYSTEM_PROMPT = `You are a maintenance management assistant. Your job is to help users manage equipment, tasks, and maintenance logs using natural language.
 
@@ -45,7 +44,7 @@ For equipment creation, common equipment types include:
 
 Always try to gather enough context to provide specific, actionable function calls.`;
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		if (!llmService.isConfigured()) {
 			return json({ 
@@ -64,7 +63,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Create function executor
-		const executor = new FunctionExecutor({ db });
+		const executor = new FunctionExecutor({ db: locals.db });
 
 		// Build context for LLM
 		const contextData: Record<string, any> = {};
@@ -143,13 +142,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			// If action requires confirmation, store it and return confirmation request
 			if (actionResult.requires_confirmation) {
 				const actionId = uuidv4();
-				pendingActions.set(actionId, actionResult);
+				_pendingActions.set(actionId, actionResult);
 
 				// Clean up old actions (simple cleanup)
-				if (pendingActions.size > 100) {
-					const keys = Array.from(pendingActions.keys());
+				if (_pendingActions.size > 100) {
+					const keys = Array.from(_pendingActions.keys());
 					for (let i = 0; i < 50; i++) {
-						pendingActions.delete(keys[i]);
+						_pendingActions.delete(keys[i]);
 					}
 				}
 
@@ -184,4 +183,4 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 // Export pending actions for confirmation endpoint
-export { pendingActions };
+export { _pendingActions };

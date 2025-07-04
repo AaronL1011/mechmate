@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/utils/db.js';
 import { 
 	equipmentRepository, 
 	taskRepository, 
 	maintenanceLogRepository 
 } from '$lib/repositories.js';
-import { pendingActions } from '../+server.js';
+import { _pendingActions } from '../+server.js';
+import type { Kysely } from 'kysely';
+import type { Database } from '$lib/types/db';
 
 interface ConfirmRequest {
 	action_id: string;
@@ -20,7 +21,7 @@ interface ConfirmResponse {
 	error?: string;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const { action_id, confirmed }: ConfirmRequest = await request.json();
 
@@ -32,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Get the pending action
-		const action = pendingActions.get(action_id);
+		const action = _pendingActions.get(action_id);
 		if (!action) {
 			return json({ 
 				success: false, 
@@ -41,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Remove from pending actions
-		pendingActions.delete(action_id);
+		_pendingActions.delete(action_id);
 
 		if (!confirmed) {
 			return json({
@@ -56,13 +57,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		try {
 			switch (action.entity) {
 				case 'equipment':
-					result = await executeEquipmentAction(action);
+					result = await executeEquipmentAction(locals.db, action);
 					break;
 				case 'task':
-					result = await executeTaskAction(action);
+					result = await executeTaskAction(locals.db, action);
 					break;
 				case 'maintenance_log':
-					result = await executeMaintenanceLogAction(action);
+					result = await executeMaintenanceLogAction(locals.db, action);
 					break;
 				default:
 					throw new Error(`Unknown entity type: ${action.entity}`);
@@ -91,7 +92,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-async function executeEquipmentAction(action: any) {
+async function executeEquipmentAction(db: Kysely<Database>, action: any) {
 	switch (action.type) {
 		case 'create':
 			return await equipmentRepository.create(db, action.data);
@@ -104,7 +105,7 @@ async function executeEquipmentAction(action: any) {
 	}
 }
 
-async function executeTaskAction(action: any) {
+async function executeTaskAction(db: Kysely<Database>, action: any) {
 	switch (action.type) {
 		case 'create':
 			return await taskRepository.create(db, action.data);
@@ -117,13 +118,13 @@ async function executeTaskAction(action: any) {
 	}
 }
 
-async function executeMaintenanceLogAction(action: any) {
+async function executeMaintenanceLogAction(db: Kysely<Database>, action: any) {
 	switch (action.type) {
 		case 'create':
 			// Check if this is a task completion or standalone log
 			if (action.data.task_id) {
 				// This is a task completion - update task and create log
-				const result = await completeTask(action.data);
+				const result = await completeTask(db, action.data);
 				return result;
 			} else {
 				// Standalone maintenance log
@@ -134,7 +135,7 @@ async function executeMaintenanceLogAction(action: any) {
 	}
 }
 
-async function completeTask(data: any) {
+async function completeTask(db: Kysely<Database>, data: any) {
 	// Get the task to update
 	const task = await taskRepository.getById(db, data.task_id);
 	if (!task) {
