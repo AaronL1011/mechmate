@@ -27,9 +27,12 @@ You have access to functions that can:
 2. Create, update, and delete maintenance tasks
 3. Log completed maintenance work
 
+The context includes existing equipment and tasks, allowing you to reference them by name or other attributes.
+
 When interpreting user requests:
-- Always search for existing equipment first before creating new ones
+- Always search for existing equipment and tasks first before creating new ones
 - Use equipment types appropriately (get available types first)
+- For task updates, find the task by name, equipment, or due date
 - Be precise with dates (use YYYY-MM-DD format)
 - Ask for clarification if the request is ambiguous
 - For recurring tasks, determine if they should be time-based (days) or usage-based (miles/hours)
@@ -41,6 +44,11 @@ For equipment creation, common equipment types include:
 - system (HVAC systems, solar panels) - use equipment_type_id: 4
 - device (computers, phones) - use equipment_type_id: 5
 - other (miscellaneous equipment) - use equipment_type_id: 6
+
+For task management:
+- You can update existing tasks (change due dates, priority, intervals, etc.)
+- Look at existing_tasks and upcoming_tasks in context to find the right task
+- Match tasks by equipment name, task title, or other identifiable attributes
 
 IMPORTANT: Always use the available functions by calling them properly. If you need to create equipment, call the create_equipment function with the required parameters. Do not just describe what should be done - actually call the functions.
 
@@ -118,6 +126,54 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		} catch (error) {
 			console.warn('Failed to load equipment list:', error);
+		}
+
+		// Get all current tasks for reference and context
+		try {
+			console.log('Fetching all current tasks...');
+			const allTasks = await executor.executeFunction('get_tasks', {});
+			console.log('All tasks result:', allTasks);
+			
+			if (allTasks.result) {
+				contextData.existing_tasks = allTasks.result.map((task: any) => ({
+					id: task.id,
+					equipment_id: task.equipment_id,
+					task_type_id: task.task_type_id,
+					title: task.title,
+					description: task.description,
+					priority: task.priority,
+					status: task.status,
+					next_due_date: task.next_due_date,
+					next_due_usage_value: task.next_due_usage_value,
+					time_interval_days: task.time_interval_days,
+					usage_interval: task.usage_interval
+				}));
+				console.log('Mapped tasks for context:', contextData.existing_tasks);
+			}
+		} catch (error) {
+			console.warn('Failed to load tasks list:', error);
+		}
+
+		// Get upcoming tasks for additional context
+		try {
+			console.log('Fetching upcoming tasks...');
+			const upcomingTasks = await executor.executeFunction('get_upcoming_tasks', { days: 90 });
+			console.log('Upcoming tasks result:', upcomingTasks);
+			
+			if (upcomingTasks.result) {
+				contextData.upcoming_tasks = upcomingTasks.result.map((task: any) => ({
+					id: task.id,
+					equipment_id: task.equipment_id,
+					title: task.title,
+					priority: task.priority,
+					status: task.status,
+					next_due_date: task.next_due_date,
+					next_due_usage_value: task.next_due_usage_value
+				}));
+				console.log('Mapped upcoming tasks for context:', contextData.upcoming_tasks);
+			}
+		} catch (error) {
+			console.warn('Failed to load upcoming tasks:', error);
 		}
 
 		// Add user-provided context

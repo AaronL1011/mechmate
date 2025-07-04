@@ -21,6 +21,7 @@
   let actionId = $state<string | null>(null);
   let responseMessage = $state<string>('');
   let errorMessage = $state<string>('');
+  let showSuccessState = $state(false);
 
   let textareaElement: HTMLTextAreaElement | null = $state(null);
 
@@ -32,6 +33,7 @@
       actionId = null;
       responseMessage = '';
       errorMessage = '';
+      showSuccessState = false;
       input = '';
     }
   })
@@ -109,18 +111,19 @@
       pendingAction = null;
       actionId = null;
       input = '';
+      showSuccessState = true;
       
       // Call success callback to refresh data
       if (onSuccess) {
         onSuccess();
       }
       
-      // Auto-close after a short delay
+      // Auto-close after a longer delay to show success state
       setTimeout(() => {
         if (isOpen) {
           onClose();
         }
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       console.error('Failed to confirm action:', error);
@@ -165,8 +168,24 @@
         </p>
       </div>
       
-      <!-- Show pending action confirmation -->
-      {#if pendingAction}
+      <!-- Show success state -->
+      {#if showSuccessState}
+        <div class="text-center py-8 animate-in zoom-in-95 duration-300">
+          <div class="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Success!</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">{responseMessage}</p>
+          <button 
+            onclick={onClose}
+            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      {:else if pendingAction}
         <ActionConfirmation 
           action={pendingAction}
           onConfirm={confirmAction}
@@ -185,16 +204,17 @@
           disabled={isProcessing}
         ></textarea>
         
-        <!-- Response messages -->
-        {#if responseMessage}
-          <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p class="text-green-800 dark:text-green-200 text-sm">{responseMessage}</p>
-          </div>
-        {/if}
-        
+        <!-- Error messages -->
         {#if errorMessage}
           <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
             <p class="text-red-800 dark:text-red-200 text-sm">{errorMessage}</p>
+          </div>
+        {/if}
+        
+        <!-- Response messages for non-action responses -->
+        {#if responseMessage && !showSuccessState}
+          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p class="text-blue-800 dark:text-blue-200 text-sm">{responseMessage}</p>
           </div>
         {/if}
         

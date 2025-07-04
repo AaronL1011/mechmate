@@ -263,6 +263,7 @@ export const taskFunctions: LLMFunction[] = [
 					properties: {
 						title: { type: 'string' },
 						description: { type: 'string' },
+						usage_due_date: { type: 'string' },
 						usage_interval: { type: 'number' },
 						time_interval_days: { type: 'number' },
 						priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
