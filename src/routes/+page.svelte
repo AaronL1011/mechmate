@@ -111,7 +111,7 @@
   }
   
   function getDayClass(date: Date): string {
-    const baseClass = 'h-24 p-2 border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+    const baseClass = 'h-24 border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
     const isCurrentDay = isToday(date);
     const isCurrentMonthDay = isCurrentMonth(date);
     const tasks = getTasksForDate(date);
@@ -320,7 +320,7 @@
                 showQuickAddModal = true;
               }}
             >
-              Quick Add
+              Quick Edit
             </button>
             <!-- Dropdown toggle -->
             <button 
@@ -593,8 +593,8 @@
           </div>
 
           <!-- Calendar Grid -->
-          <div class="p-2 lg:p-6">
-            <div class="grid grid-cols-7 gap-1">
+          <div class="p-0 lg:p-6">
+            <div class="grid grid-cols-7 gap-0 lg:gap-1">
               <!-- Day headers -->
               {#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as day}
                 <div class="h-8 flex items-center justify-center text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -605,7 +605,7 @@
               <!-- Calendar days -->
               {#each calendarDays as day (day.toISOString())}
                 <div class={getDayClass(day)}>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  <div class="text-sm font-medium  m-1 mr-0">
                     {day.getDate()}
                   </div>
                   <div class="space-y-1">

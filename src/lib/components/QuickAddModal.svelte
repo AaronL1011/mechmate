@@ -445,10 +445,10 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/60 dark:bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
     <div class="w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-200">
       <div class="mb-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Quick Add</h2>
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Quick Edit</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400">
           {nextPrompt}
         </p>
