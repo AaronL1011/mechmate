@@ -191,7 +191,6 @@ export const equipmentRepository = {
 	create: async (db: Kysely<Database>, equipment: CreateEquipmentRequest): Promise<Equipment> => {
 		const newEquipment: NewEquipment = {
 			name: equipment.name,
-			type: equipment.type,
 			equipment_type_id: equipment.equipment_type_id,
 			make: equipment.make,
 			model: equipment.model,
@@ -217,7 +216,6 @@ export const equipmentRepository = {
 		const updateData: any = {};
 		
 		if (updates.name !== undefined) updateData.name = updates.name;
-		if (updates.type !== undefined) updateData.type = updates.type;
 		if (updates.equipment_type_id !== undefined) updateData.equipment_type_id = updates.equipment_type_id;
 		if (updates.make !== undefined) updateData.make = updates.make;
 		if (updates.model !== undefined) updateData.model = updates.model;
@@ -325,7 +323,6 @@ export const taskRepository = {
 		const equipment: Equipment = {
 			id: task.equipment_id,
 			name: task.name,
-			type: task.type,
 			equipment_type_id: task.equipment_type_id,
 			make: task.make,
 			model: task.model,

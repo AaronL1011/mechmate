@@ -663,5 +663,6 @@
   {equipment}
   {taskTypes}
   {equipmentTypes}
+  onSuccess={loadData}
   onClose={() => showQuickEditModal = false}
 />

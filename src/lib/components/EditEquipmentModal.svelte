@@ -12,7 +12,6 @@
   
   let formData: UpdateEquipmentRequest = $state({
     name: '',
-    type: '',
     equipment_type_id: 0,
     make: '',
     model: '',
@@ -52,7 +51,6 @@
     if (equipment && isOpen) {
       formData = {
         name: equipment.name,
-        type: equipment.type,
         equipment_type_id: equipment.equipment_type_id,
         make: equipment.make || '',
         model: equipment.model || '',
@@ -133,7 +131,7 @@
     // Reset form
     formData = {
       name: '',
-      type: '',
+      equipment_type_id: 0,
       make: '',
       model: '',
       year: undefined,

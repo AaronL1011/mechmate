@@ -105,6 +105,10 @@
       return [];
     }
   }
+
+  function getEquipmentTypeName(equipmentTypeId: number): string {
+    return equipmentTypes.find(e => e.id === equipmentTypeId)?.name || "Unknown";
+  }
   
   onMount(() => {
     loadEquipment();
@@ -170,7 +174,7 @@
                       <div>
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">{equipmentItem.name}</h3>
                         <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
-                          <span class="capitalize">{equipmentItem.type}</span>
+                          <span class="capitalize">{getEquipmentTypeName(equipmentItem.equipment_type_id)}</span>
                           {#if equipmentItem.make || equipmentItem.model}
                             <span>•</span>
                             <span>{equipmentItem.make} {equipmentItem.model}</span>

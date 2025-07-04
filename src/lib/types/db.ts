@@ -17,7 +17,6 @@ export interface Database {
 export interface EquipmentTable {
 	id: Generated<number>;
 	name: string;
-	type: string;
 	equipment_type_id: number;
 	make?: string;
 	model?: string;
@@ -141,7 +140,6 @@ export interface DashboardStats {
 // Request/Response types
 export interface CreateEquipmentRequest {
 	name: string;
-	type: string;
 	equipment_type_id: number;
 	make?: string;
 	model?: string;
@@ -180,7 +178,6 @@ export interface CompleteTaskRequest {
 
 export interface UpdateEquipmentRequest {
 	name?: string;
-	type?: string;
 	equipment_type_id?: number;
 	make?: string;
 	model?: string;

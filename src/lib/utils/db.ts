@@ -8,7 +8,6 @@ export async function initializeTables(db: Kysely<Database>) {
 		.ifNotExists()
 		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
 		.addColumn('name', 'text', (col) => col.notNull())
-		.addColumn('type', 'text', (col) => col.notNull())
 		.addColumn('equipment_type_id', 'integer', (col) => col.notNull())
 		.addColumn('make', 'text')
 		.addColumn('model', 'text')
@@ -134,7 +133,7 @@ export async function initializeTables(db: Kysely<Database>) {
 		.execute();
 
 	// Create indexes for performance
-	await db.schema.createIndex('idx_equipment_type').ifNotExists().on('equipment').column('type').execute();
+	await db.schema.createIndex('idx_equipment_type_id').ifNotExists().on('equipment').column('equipment_type_id').execute();
 	await db.schema.createIndex('idx_tasks_equipment').ifNotExists().on('tasks').column('equipment_id').execute();
 	await db.schema.createIndex('idx_tasks_status').ifNotExists().on('tasks').column('status').execute();
 	await db.schema.createIndex('idx_tasks_next_due').ifNotExists().on('tasks').columns(['next_due_date', 'next_due_usage_value']).execute();
