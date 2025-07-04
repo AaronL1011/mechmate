@@ -38,6 +38,11 @@
     }
   })
 
+  function handleClose() {
+    showSuccessState = false;
+    onClose();
+  }
+
   async function processInput() {
     if (!input.trim()) return;
     
@@ -121,7 +126,7 @@
       // Auto-close after a longer delay to show success state
       setTimeout(() => {
         if (isOpen) {
-          onClose();
+          handleClose();
         }
       }, 3000);
       
@@ -152,7 +157,7 @@
       if (pendingAction) {
         cancelAction();
       } else {
-        onClose();
+        handleClose();
       }
     }
   }
@@ -161,7 +166,7 @@
 {#if isOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/60 dark:bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
     <div class="w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-200">
-      <div class="mb-6">
+      <div class="mb-6" class:hidden={showSuccessState}>
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Quick Edit</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400">
           Use natural language to create equipment, schedule tasks, or log maintenance
@@ -179,7 +184,7 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Success!</h3>
           <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">{responseMessage}</p>
           <button 
-            onclick={onClose}
+            onclick={handleClose}
             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg transition-colors"
           >
             Done
