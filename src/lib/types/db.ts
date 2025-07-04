@@ -11,6 +11,7 @@ export interface Database {
 	notification_settings: NotificationSettingsTable;
 	notification_log: NotificationLogTable;
 	global_settings: GlobalSettingsTable;
+	quick_edit_actions: QuickEditActionsTable;
 }
 
 export interface EquipmentTable {
@@ -325,3 +326,18 @@ export interface GlobalSettingDefinition {
 		allowedValues?: any[];
 	};
 }
+
+// Quick Edit Actions Table
+export interface QuickEditActionsTable {
+	id: string; // UUID primary key
+	user_prompt: string;
+	interpreted_action: string; // JSON string
+	status: 'pending' | 'confirmed' | 'cancelled' | 'executed';
+	created_at: ColumnType<Date, string | undefined, never>;
+	executed_at?: ColumnType<Date, string | undefined, never>;
+	result?: string; // JSON string of execution result
+}
+
+export type QuickEditAction = Selectable<QuickEditActionsTable>;
+export type NewQuickEditAction = Insertable<QuickEditActionsTable>;
+export type QuickEditActionUpdate = Updateable<QuickEditActionsTable>;

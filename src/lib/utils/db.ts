@@ -165,6 +165,23 @@ export async function initializeTables(db: Kysely<Database>) {
 
 	// Global Settings indexes
 	await db.schema.createIndex('idx_global_settings_key').ifNotExists().on('global_settings').column('setting_key').execute();
+
+	// Quick Edit Actions table
+	await db.schema
+		.createTable('quick_edit_actions')
+		.ifNotExists()
+		.addColumn('id', 'text', (col) => col.primaryKey()) // UUID
+		.addColumn('user_prompt', 'text', (col) => col.notNull())
+		.addColumn('interpreted_action', 'text', (col) => col.notNull()) // JSON string
+		.addColumn('status', 'text', (col) => col.notNull().check(sql`status IN ('pending', 'confirmed', 'cancelled', 'executed')`))
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('executed_at', 'text')
+		.addColumn('result', 'text') // JSON string
+		.execute();
+
+	// Quick Edit Actions indexes
+	await db.schema.createIndex('idx_quick_edit_actions_status').ifNotExists().on('quick_edit_actions').column('status').execute();
+	await db.schema.createIndex('idx_quick_edit_actions_created_at').ifNotExists().on('quick_edit_actions').column('created_at').execute();
 }
 
 export async function seedData(db: Kysely<Database>) {

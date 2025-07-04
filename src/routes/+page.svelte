@@ -4,7 +4,7 @@
   import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
   import AddTaskModal from '$lib/components/AddTaskModal.svelte';
   import CompleteTaskModal from '$lib/components/CompleteTaskModal.svelte';
-  import QuickAddModal from '$lib/components/QuickAddModal.svelte';
+  import QuickEditModal from '$lib/components/QuickEditModal.svelte';
   
   let stats: DashboardStats | null = $state(null);
   let upcomingTasks: Task[] = $state([]);
@@ -25,7 +25,7 @@
   let showAddEquipmentModal = $state(false);
   let showAddTaskModal = $state(false);
   let showCompleteTaskModal = $state(false);
-  let showQuickAddModal = $state(false);
+  let showQuickEditModal = $state(false);
   let selectedTask: Task | null = $state(null);
   let showDropdown = $state(false);
   
@@ -317,7 +317,7 @@
               class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-l-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap border-r border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               disabled={!stats}
               onclick={() => {
-                showQuickAddModal = true;
+                showQuickEditModal = true;
               }}
             >
               Quick Edit
@@ -658,10 +658,10 @@
   onCloseModal={() => showCompleteTaskModal = false}
 />
 
-<QuickAddModal 
-  isOpen={showQuickAddModal}
+<QuickEditModal 
+  isOpen={showQuickEditModal}
   {equipment}
   {taskTypes}
   {equipmentTypes}
-  onClose={() => showQuickAddModal = false}
+  onClose={() => showQuickEditModal = false}
 />
