@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   interface ActionResult {
     type: 'create' | 'update' | 'delete' | 'query';
     entity: 'equipment' | 'task' | 'maintenance_log';
@@ -14,6 +16,33 @@
   }
 
   const { action, onConfirm, onCancel, isConfirming = false }: Props = $props();
+
+  // State for lookup data
+  let equipmentTypes = $state<Array<{id: number, name: string}>>([]);
+  let taskTypes = $state<Array<{id: number, name: string}>>([]);
+  let isLoading = $state(true);
+
+  // Fetch reference data on mount
+  onMount(async () => {
+    try {
+      const [equipmentTypesRes, taskTypesRes] = await Promise.all([
+        fetch('/api/equipment-types'),
+        fetch('/api/task-types')
+      ]);
+      
+      if (equipmentTypesRes.ok) {
+        equipmentTypes = await equipmentTypesRes.json();
+      }
+      
+      if (taskTypesRes.ok) {
+        taskTypes = await taskTypesRes.json();
+      }
+    } catch (error) {
+      console.warn('Failed to fetch reference data:', error);
+    } finally {
+      isLoading = false;
+    }
+  });
 
   function getActionIcon(type: string): string {
     switch (type) {
@@ -33,26 +62,76 @@
     }
   }
 
+  function resolveValue(key: string, value: any): any {
+    // Resolve equipment_type_id to equipment type name
+    if (key === 'equipment_type_id' && typeof value === 'number') {
+      const equipmentType = equipmentTypes.find(type => type.id === value);
+      return equipmentType ? equipmentType.name : 'Unknown Type';
+    }
+    
+    // Resolve task_type_id to task type name
+    if (key === 'task_type_id' && typeof value === 'number') {
+      const taskType = taskTypes.find(type => type.id === value);
+      return taskType ? taskType.name : 'Unknown Task Type';
+    }
+    
+    // Handle arrays
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    
+    // Handle objects
+    if (typeof value === 'object' && value !== null) {
+      return JSON.stringify(value);
+    }
+    
+    return value;
+  }
+
+  function formatFieldName(key: string): string {
+    // Convert snake_case to proper labels
+    switch (key) {
+      case 'equipment_type_id':
+        return 'Equipment Type';
+      case 'task_type_id':
+        return 'Task Type';
+      case 'current_usage_value':
+        return 'Current Usage';
+      case 'usage_unit':
+        return 'Usage Unit';
+      case 'serial_number':
+        return 'Serial Number';
+      case 'purchase_date':
+        return 'Purchase Date';
+      case 'time_interval_days':
+        return 'Time Interval (Days)';
+      case 'usage_interval':
+        return 'Usage Interval';
+      default:
+        return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+  }
+
   function formatData(data: any): Array<{ key: string; value: any }> {
     if (!data) return [];
     
     const formatted: Array<{ key: string; value: any }> = [];
     
     for (const [key, value] of Object.entries(data)) {
-      if (key === 'id' || key === 'updates') continue;
+      if (key === 'id') continue;
       
       // Handle nested updates object
       if (key === 'updates' && typeof value === 'object') {
         for (const [updateKey, updateValue] of Object.entries(value)) {
           formatted.push({
-            key: updateKey.replace(/_/g, ' '),
-            value: updateValue
+            key: formatFieldName(updateKey),
+            value: resolveValue(updateKey, updateValue)
           });
         }
       } else {
         formatted.push({
-          key: key.replace(/_/g, ' '),
-          value: value
+          key: formatFieldName(key),
+          value: resolveValue(key, value)
         });
       }
     }
@@ -78,22 +157,22 @@
 
   {#if action.data}
     <div class="space-y-2 mb-4">
-      {#each formatData(action.data) as item}
-        <div class="flex justify-between items-center py-1">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
-            {item.key}:
-          </span>
-          <span class="text-sm text-gray-900 dark:text-white">
-            {#if Array.isArray(item.value)}
-              {item.value.join(', ')}
-            {:else if typeof item.value === 'object'}
-              {JSON.stringify(item.value)}
-            {:else}
-              {item.value}
-            {/if}
-          </span>
+      {#if isLoading}
+        <div class="flex justify-center py-2">
+          <span class="text-sm text-gray-500 dark:text-gray-400">Loading details...</span>
         </div>
-      {/each}
+      {:else}
+        {#each formatData(action.data) as item}
+          <div class="flex justify-between items-center py-1">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {item.key}:
+            </span>
+            <span class="text-sm text-gray-900 dark:text-white">
+              {item.value}
+            </span>
+          </div>
+        {/each}
+      {/if}
     </div>
   {/if}
 
