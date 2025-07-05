@@ -65,12 +65,10 @@ async function processConversation(
 		content: prompt
 	});
 
-	console.log('Starting progressive conversation processing...');
 	let iteration = 0;
 	
 	while (iteration < maxIterations) {
 		iteration++;
-		console.log(`Conversation iteration ${iteration}/${maxIterations}`);
 
 		// Call LLM
 		const llmResponse = await llmService.completions({
@@ -96,14 +94,10 @@ async function processConversation(
 
 		// Check if LLM wants to call a function
 		if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
-			console.log(`Found ${choice.message.tool_calls.length} tool calls`);
-			
 			// Process each tool call
 			for (const toolCall of choice.message.tool_calls) {
 				const functionName = toolCall.function.name;
 				const functionArgs = JSON.parse(toolCall.function.arguments);
-				
-				console.log(`Executing function: ${functionName}`, functionArgs);
 				
 				// Execute the function
 				const actionResult = await executor.executeFunction(functionName, functionArgs);
@@ -212,10 +206,9 @@ IMPORTANT: Always use the available functions by calling them properly. Start wi
 Always try to gather enough context through queries to provide specific, actionable function calls.`;
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('=== Quick Edit Request Started ===');
+	console.log('Quick edit request started');
 	
 	try {
-		console.log('Checking LLM service configuration...');
 		if (!llmService.isConfigured()) {
 			console.error('LLM service not configured');
 			return json({ 
@@ -223,35 +216,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				error: 'LLM service not properly configured. Please check environment variables.' 
 			}, { status: 500 });
 		}
-		console.log('LLM service configuration OK');
 
 		const { prompt, context, conversation_history }: QuickEditRequest = await request.json();
-		console.log('Request payload:', { prompt, context, conversation_history });
+		console.log('Processing prompt:', prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''));
 
 		if (!prompt?.trim()) {
-			console.error('Empty prompt provided');
 			return json({ 
 				success: false, 
 				error: 'Prompt is required' 
 			}, { status: 400 });
 		}
 
-		// Create function executor
-		console.log('Creating function executor...');
 		const executor = new FunctionExecutor({ db: locals.db });
-
-		// Build minimal context for LLM (only essential reference data)
-		console.log('Building minimal context data for LLM...');
 		const contextData: Record<string, any> = {};
 		
-		// Only include equipment types and task types for reference
+		// Load reference data
 		try {
-			console.log('Fetching equipment types and task types...');
 			const equipmentTypes = await executor.executeFunction('get_equipment_types', {});
 			const taskTypes = await executor.executeFunction('get_task_types', {});
-			
-			console.log('Equipment types result:', equipmentTypes);
-			console.log('Task types result:', taskTypes);
 			
 			if (equipmentTypes.result) {
 				contextData.available_equipment_types = equipmentTypes.result;
@@ -260,33 +242,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				contextData.available_task_types = taskTypes.result;
 			}
 		} catch (error) {
-			console.warn('Failed to load context data:', error);
+			console.warn('Failed to load reference data:', error);
 		}
-
-		// Note: Equipment and task lists are NOT loaded upfront
-		// The LLM will query for this data as needed using the available functions
 
 		// Add user-provided context
 		if (context) {
-			console.log('Adding user context:', context);
 			contextData.user_context = context;
 		}
 
-		console.log('Final minimal context data for LLM:', contextData);
-		console.log('Functions available to LLM:', allFunctions.length, 'functions');
-
-		// Process the conversation with progressive context building
-		console.log('Processing conversation with progressive context building...');
+		// Process the conversation
 		const result = await processConversation(
 			prompt,
 			contextData,
 			conversation_history || [],
 			executor
 		);
-		console.log('Conversation processing result:', result);
 
 		// Handle errors
 		if (!result.success) {
+			console.error('Quick edit failed:', result.error);
 			return json({ 
 				success: false, 
 				error: result.error,
@@ -297,12 +271,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// If we have an action that requires confirmation
 		if (result.action && result.action.requires_confirmation) {
 			const actionId = uuidv4();
-			console.log('Action requires confirmation, storing with ID:', actionId);
+			console.log('Action requires confirmation:', result.action.type, result.action.entity);
 			_pendingActions.set(actionId, result.action);
 
-			// Clean up old actions (simple cleanup)
+			// Clean up old actions
 			if (_pendingActions.size > 100) {
-				console.log('Cleaning up old pending actions...');
 				const keys = Array.from(_pendingActions.keys());
 				for (let i = 0; i < 50; i++) {
 					_pendingActions.delete(keys[i]);
@@ -317,7 +290,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// Return the result (either action completed or message)
+		console.log('Quick edit completed:', result.action ? `${result.action.type} ${result.action.entity}` : 'text response');
 		return json({
 			success: true,
 			action: result.action,
@@ -327,9 +300,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 	} catch (error) {
-		console.error('=== Quick Edit API Error ===');
-		console.error('Error details:', error);
-		console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+		console.error('Quick edit API error:', error instanceof Error ? error.message : 'Unknown error');
 		return json({ 
 			success: false, 
 			error: error instanceof Error ? error.message : 'Unknown error occurred' 

@@ -22,14 +22,12 @@ interface ConfirmResponse {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('=== Quick Edit Confirm Request Started ===');
+	console.log('Quick edit confirm request');
 	
 	try {
 		const { action_id, confirmed }: ConfirmRequest = await request.json();
-		console.log('Confirm request payload:', { action_id, confirmed });
 
 		if (!action_id) {
-			console.error('No action_id provided');
 			return json({ 
 				success: false, 
 				error: 'Action ID is required' 
@@ -37,60 +35,48 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Get the pending action
-		console.log('Looking for pending action with ID:', action_id);
-		console.log('Current pending actions:', Array.from(_pendingActions.keys()));
 		const action = _pendingActions.get(action_id);
 		
 		if (!action) {
-			console.error('Action not found in pending actions');
 			return json({ 
 				success: false, 
 				error: 'Action not found or expired' 
 			}, { status: 404 });
 		}
 
-		console.log('Found pending action:', action);
-
 		// Remove from pending actions
-		console.log('Removing action from pending actions');
 		_pendingActions.delete(action_id);
 
 		if (!confirmed) {
-			console.log('Action was cancelled by user');
+			console.log('Action cancelled');
 			return json({
 				success: true,
 				message: 'Action cancelled'
 			});
 		}
 
-		console.log('Action confirmed, proceeding with execution');
-
 		// Execute the confirmed action
 		let result;
 		
 		try {
-			console.log('Executing action for entity:', action.entity, 'type:', action.type);
+			console.log('Executing action:', action.type, action.entity);
 			
 			switch (action.entity) {
 				case 'equipment':
-					console.log('Executing equipment action...');
 					result = await executeEquipmentAction(locals.db, action);
 					break;
 				case 'task':
-					console.log('Executing task action...');
 					result = await executeTaskAction(locals.db, action);
 					break;
 				case 'maintenance_log':
-					console.log('Executing maintenance log action...');
 					result = await executeMaintenanceLogAction(locals.db, action);
 					break;
 				default:
 					throw new Error(`Unknown entity type: ${action.entity}`);
 			}
 
-			console.log('Action execution completed successfully:', result);
 			const successMessage = getSuccessMessage(action);
-			console.log('Success message:', successMessage);
+			console.log('Action completed:', successMessage);
 
 			return json({
 				success: true,
@@ -99,10 +85,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 
 		} catch (error) {
-			console.error('=== Action Execution Error ===');
-			console.error('Error details:', error);
-			console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-			console.error('Action that failed:', action);
+			console.error('Action execution failed:', error instanceof Error ? error.message : 'Unknown error');
 			return json({ 
 				success: false, 
 				error: error instanceof Error ? error.message : 'Action execution failed' 
@@ -110,9 +93,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 	} catch (error) {
-		console.error('=== Confirm API Error ===');
-		console.error('Error details:', error);
-		console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+		console.error('Confirm API error:', error instanceof Error ? error.message : 'Unknown error');
 		return json({ 
 			success: false, 
 			error: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -121,71 +102,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 async function executeEquipmentAction(db: Kysely<Database>, action: any) {
-	console.log('Executing equipment action:', action.type, 'with data:', action.data);
-	
 	switch (action.type) {
 		case 'create':
-			console.log('Creating equipment with data:', action.data);
-			const createResult = await equipmentRepository.create(db, action.data);
-			console.log('Equipment created:', createResult);
-			return createResult;
+			return await equipmentRepository.create(db, action.data);
 		case 'update':
-			console.log('Updating equipment ID:', action.data.id, 'with updates:', action.data.updates);
-			const updateResult = await equipmentRepository.update(db, action.data.id, action.data.updates);
-			console.log('Equipment updated:', updateResult);
-			return updateResult;
+			return await equipmentRepository.update(db, action.data.id, action.data.updates);
 		case 'delete':
-			console.log('Deleting equipment ID:', action.data.id);
-			const deleteResult = await equipmentRepository.delete(db, action.data.id);
-			console.log('Equipment deleted:', deleteResult);
-			return deleteResult;
+			return await equipmentRepository.delete(db, action.data.id);
 		default:
 			throw new Error(`Unknown equipment action: ${action.type}`);
 	}
 }
 
 async function executeTaskAction(db: Kysely<Database>, action: any) {
-	console.log('Executing task action:', action.type, 'with data:', action.data);
-	
 	switch (action.type) {
 		case 'create':
-			console.log('Creating task with data:', action.data);
-			const createResult = await taskRepository.create(db, action.data);
-			console.log('Task created:', createResult);
-			return createResult;
+			return await taskRepository.create(db, action.data);
 		case 'update':
-			console.log('Updating task ID:', action.data.id, 'with updates:', action.data.updates);
-			const updateResult = await taskRepository.update(db, action.data.id, action.data.updates);
-			console.log('Task updated:', updateResult);
-			return updateResult;
+			return await taskRepository.update(db, action.data.id, action.data.updates);
 		case 'delete':
-			console.log('Deleting task ID:', action.data.id);
-			const deleteResult = await taskRepository.delete(db, action.data.id);
-			console.log('Task deleted:', deleteResult);
-			return deleteResult;
+			return await taskRepository.delete(db, action.data.id);
 		default:
 			throw new Error(`Unknown task action: ${action.type}`);
 	}
 }
 
 async function executeMaintenanceLogAction(db: Kysely<Database>, action: any) {
-	console.log('Executing maintenance log action:', action.type, 'with data:', action.data);
-	
 	switch (action.type) {
 		case 'create':
 			// Check if this is a task completion or standalone log
 			if (action.data.task_id) {
-				console.log('Creating maintenance log as task completion for task ID:', action.data.task_id);
 				// This is a task completion - update task and create log
-				const result = await completeTask(db, action.data);
-				console.log('Task completion result:', result);
-				return result;
+				return await completeTask(db, action.data);
 			} else {
-				console.log('Creating standalone maintenance log');
 				// Standalone maintenance log
-				const result = await maintenanceLogRepository.create(db, action.data);
-				console.log('Standalone maintenance log created:', result);
-				return result;
+				return await maintenanceLogRepository.create(db, action.data);
 			}
 		default:
 			throw new Error(`Unknown maintenance log action: ${action.type}`);
@@ -193,20 +144,14 @@ async function executeMaintenanceLogAction(db: Kysely<Database>, action: any) {
 }
 
 async function completeTask(db: Kysely<Database>, data: any) {
-	console.log('Completing task with data:', data);
-	
 	// Get the task to update
-	console.log('Fetching task with ID:', data.task_id);
 	const task = await taskRepository.getById(db, data.task_id);
 	if (!task) {
 		throw new Error(`Task with ID ${data.task_id} not found`);
 	}
-	console.log('Found task:', task);
 
 	// Get equipment for usage value updates
-	console.log('Fetching equipment with ID:', task.equipment_id);
 	const equipment = await equipmentRepository.getById(db, task.equipment_id);
-	console.log('Found equipment:', equipment);
 	if (!equipment) {
 		throw new Error(`Equipment with ID ${task.equipment_id} not found`);
 	}
