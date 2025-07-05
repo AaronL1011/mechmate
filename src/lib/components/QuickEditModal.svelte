@@ -166,7 +166,7 @@
 {#if isOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/60 dark:bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
     <div class="w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-1000">
-      <div class="mb-6" class:hidden={showSuccessState}>
+      <div class="mb-8" class:hidden={showSuccessState}>
         <div class="flex gap-3 items-center h-fit mb-2">
           <img src="/robot.png" alt="mech assistant" class="h-10 w-10">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Mech Assistant</h2>
@@ -201,6 +201,29 @@
           isConfirming={isConfirming}
         />
       {:else}
+      <!-- Error messages -->
+      {#if errorMessage}
+        <div class="mb-4 flex items-start gap-3 max-h-64 lg:max-h-128 overflow-y-auto">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <img src="/robot.png" alt="assistant" class="w-5 h-5 opacity-75">
+          </div>
+          <div class="max-w-xs bg-red-50 dark:bg-red-900/20 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+            <p class="text-red-800 dark:text-red-200 text-sm leading-relaxed">{errorMessage}</p>
+          </div>
+        </div>
+      {/if}
+      
+      <!-- Response messages for non-action responses -->
+      {#if responseMessage && !showSuccessState}
+        <div class="mb-4 flex items-start gap-3 max-h-64 lg:max-h-128 overflow-y-auto">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <img src="/robot.png" alt="assistant" class="w-5 h-5">
+          </div>
+          <div class="max-w-sm bg-gray-50 dark:bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+            <p class="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">{responseMessage}</p>
+          </div>
+        </div>
+      {/if}
         <!-- Input area -->
         <textarea
           bind:this={textareaElement}
@@ -211,20 +234,6 @@
           onkeydown={handleKeyDown}
           disabled={isProcessing}
         ></textarea>
-        
-        <!-- Error messages -->
-        {#if errorMessage}
-          <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-            <p class="text-red-800 dark:text-red-200 text-sm">{errorMessage}</p>
-          </div>
-        {/if}
-        
-        <!-- Response messages for non-action responses -->
-        {#if responseMessage && !showSuccessState}
-          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p class="text-blue-800 dark:text-blue-200 text-sm">{responseMessage}</p>
-          </div>
-        {/if}
         
         <div class="flex justify-between mt-6">
           <button 
