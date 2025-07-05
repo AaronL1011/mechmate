@@ -215,7 +215,7 @@
       {:else}
       <!-- Error messages -->
       {#if errorMessage}
-        <div class="mb-4 flex items-start gap-3 max-h-64 lg:max-h-128 overflow-y-auto">
+        <div class="mb-4 flex items-start gap-3 max-h-[50vh] overflow-y-auto scrollbar-hidden">
           <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
             <img src="/robot.png" alt="assistant" class="w-5 h-5 opacity-75">
           </div>
@@ -227,7 +227,7 @@
       
       <!-- Response messages for non-action responses -->
       {#if responseMessage && !showSuccessState}
-        <div class="mb-4 flex items-start gap-3 max-h-64 lg:max-h-128 overflow-y-auto">
+        <div class="mb-4 flex items-start gap-3 max-h-[50vh] overflow-y-auto scrollbar-hidden">
           <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
             <img src="/robot.png" alt="assistant" class="w-5 h-5">
           </div>
