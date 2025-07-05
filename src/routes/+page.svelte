@@ -320,7 +320,7 @@
                 showQuickEditModal = true;
               }}
             >
-              Quick Edit
+              Ask Mech
             </button>
             <!-- Dropdown toggle -->
             <button 

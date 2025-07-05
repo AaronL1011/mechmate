@@ -165,11 +165,14 @@
 
 {#if isOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/60 dark:bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
-    <div class="w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-200">
+    <div class="w-full max-w-lg mx-4 p-6 animate-in zoom-in-95 duration-1000">
       <div class="mb-6" class:hidden={showSuccessState}>
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Quick Edit</h2>
+        <div class="flex gap-3 items-center h-fit mb-2">
+          <img src="/robot.png" alt="mech assistant" class="h-10 w-10">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Mech Assistant</h2>
+        </div>
         <p class="text-sm text-gray-600 dark:text-gray-400">
-          Use natural language to create equipment, schedule tasks, or log maintenance
+          Ask me to create equipment, schedule and update tasks, or log some completed maintenance
         </p>
       </div>
       
@@ -202,7 +205,7 @@
         <textarea
           bind:this={textareaElement}
           bind:value={input}
-          rows={3}
+          rows={4}
           placeholder="e.g. 'Add my 2015 Honda Civic with 85,000 km' or 'Schedule an oil change on the bike every 3000 km'"
           class="resize-none w-full px-6 py-4 text-md lg:text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 transition-colors"
           onkeydown={handleKeyDown}
