@@ -100,13 +100,12 @@ export const equipmentFunctions: LLMFunction[] = [
 					description: 'Unit of usage measurement (miles, km, hours, cycles, etc.)'
 				},
 				metadata: {
-					type: 'object',
-					description: 'Additional equipment-specific metadata'
+					type: 'string',
+					description: 'JSON string for flexible equipment-specific data'
 				},
 				tags: {
-					type: 'array',
-					items: { type: 'string' },
-					description: 'Tags for organization'
+					type: 'string',
+					description: 'JSON array of tags as string'
 				}
 			},
 			required: ['name', 'equipment_type_id', 'current_usage_value', 'usage_unit']
@@ -135,8 +134,8 @@ export const equipmentFunctions: LLMFunction[] = [
 						purchase_date: { type: 'string' },
 						current_usage_value: { type: 'number' },
 						usage_unit: { type: 'string' },
-						metadata: { type: 'object' },
-						tags: { type: 'array', items: { type: 'string' } }
+						metadata: { type: 'string' },
+						tags: { type: 'string' }
 					}
 				}
 			},
@@ -238,10 +237,31 @@ export const taskFunctions: LLMFunction[] = [
 					type: 'number',
 					description: 'Time interval in days for recurring tasks (e.g., every 90 days)'
 				},
+				last_completed_usage_value: {
+					type: 'number',
+					description: 'Usage value when task was last completed'
+				},
+				last_completed_date: {
+					type: 'string',
+					description: 'Date when task was last completed in YYYY-MM-DD format'
+				},
+				next_due_usage_value: {
+					type: 'number',
+					description: 'Usage value when task is next due'
+				},
+				next_due_date: {
+					type: 'string',
+					description: 'Date when task is next due in YYYY-MM-DD format'
+				},
 				priority: {
 					type: 'string',
 					enum: ['low', 'medium', 'high', 'critical'],
 					description: 'Task priority'
+				},
+				status: {
+					type: 'string',
+					enum: ['pending', 'completed', 'overdue'],
+					description: 'Task status'
 				}
 			},
 			required: ['equipment_id', 'task_type_id', 'title']
@@ -263,9 +283,12 @@ export const taskFunctions: LLMFunction[] = [
 					properties: {
 						title: { type: 'string' },
 						description: { type: 'string' },
-						usage_due_date: { type: 'string' },
 						usage_interval: { type: 'number' },
 						time_interval_days: { type: 'number' },
+						last_completed_usage_value: { type: 'number' },
+						last_completed_date: { type: 'string' },
+						next_due_usage_value: { type: 'number' },
+						next_due_date: { type: 'string' },
 						priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
 						status: { type: 'string', enum: ['pending', 'completed', 'overdue'] }
 					}
@@ -345,9 +368,8 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 					description: 'Cost of the maintenance'
 				},
 				parts_used: {
-					type: 'array',
-					items: { type: 'string' },
-					description: 'List of parts used in the maintenance'
+					type: 'string',
+					description: 'JSON array of parts used in the maintenance'
 				},
 				service_provider: {
 					type: 'string',
@@ -388,9 +410,8 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 					description: 'Cost of the maintenance'
 				},
 				parts_used: {
-					type: 'array',
-					items: { type: 'string' },
-					description: 'List of parts used in the maintenance'
+					type: 'string',
+					description: 'JSON array of parts used in the maintenance'
 				},
 				service_provider: {
 					type: 'string',
