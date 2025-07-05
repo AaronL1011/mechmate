@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Equipment, TaskType, EquipmentType } from '$lib/types/db.js';
   import ActionConfirmation from './ActionConfirmation.svelte';
+  import { marked } from 'marked';
 
   interface Props {
     isOpen: boolean;
@@ -24,6 +25,17 @@
   let showSuccessState = $state(false);
 
   let textareaElement: HTMLTextAreaElement | null = $state(null);
+
+  // Configure marked for safe rendering
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+  });
+
+  function renderMarkdown(text: string): string {
+    if (!text) return '';
+    return marked(text) as string;
+  }
 
   $effect(() => {
     if (isOpen && textareaElement) {
@@ -220,7 +232,14 @@
             <img src="/robot.png" alt="assistant" class="w-5 h-5">
           </div>
           <div class="max-w-sm bg-gray-50 dark:bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">{responseMessage}</p>
+            <div class="text-gray-800 dark:text-gray-200 text-sm leading-relaxed prose prose-sm prose-gray dark:prose-invert max-w-none
+                       prose-p:my-2 prose-p:leading-relaxed
+                       prose-strong:text-gray-900 dark:prose-strong:text-gray-100
+                       prose-code:text-blue-600 dark:prose-code:text-blue-400 prose-code:bg-gray-100 dark:prose-code:bg-gray-700 prose-code:px-1 prose-code:rounded
+                       prose-ul:my-2 prose-ol:my-2 prose-li:my-1
+                       prose-headings:text-gray-900 dark:prose-headings:text-gray-100">
+              {@html renderMarkdown(responseMessage)}
+            </div>
           </div>
         </div>
       {/if}

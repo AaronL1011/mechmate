@@ -45,6 +45,7 @@
 		"@types/uuid": "^10.0.0",
 		"better-sqlite3": "^12.1.0",
 		"kysely": "^0.28.2",
+		"marked": "^16.0.0",
 		"node-cron": "^3.0.3",
 		"uuid": "^11.0.4",
 		"web-push": "^3.6.7"
