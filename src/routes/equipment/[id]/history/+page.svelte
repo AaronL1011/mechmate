@@ -83,10 +83,10 @@
   
   function exportToPDF() {
     if (!equipment || !completions.length) return;
-    const equipmentType = getEquipmentTypeName(equipment.equipment_type_id)
-    equipment.type = equipmentType;
+    const equipmentTypeName = getEquipmentTypeName(equipment.equipment_type_id);
+    
     // Create a simple HTML report that can be printed
-    const reportHTML = createReportHTML(equipment, completions);
+    const reportHTML = createReportHTML(equipment, completions, equipmentTypeName);
     
     // Create a blob URL and open it in a new window
     const blob = new Blob([reportHTML], { type: 'text/html' });

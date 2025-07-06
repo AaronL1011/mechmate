@@ -4,6 +4,7 @@
   import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
   import AddTaskModal from '$lib/components/AddTaskModal.svelte';
   import CompleteTaskModal from '$lib/components/CompleteTaskModal.svelte';
+  import MechAssistant from '$lib/components/MechAssistant.svelte';
   
   let stats: DashboardStats | null = $state(null);
   let upcomingTasks: Task[] = $state([]);
@@ -24,6 +25,7 @@
   let showAddEquipmentModal = $state(false);
   let showAddTaskModal = $state(false);
   let showCompleteTaskModal = $state(false);
+  let showMechAssistant = $state(false);
   let selectedTask: Task | null = $state(null);
   let showDropdown = $state(false);
   
@@ -109,7 +111,7 @@
   }
   
   function getDayClass(date: Date): string {
-    const baseClass = 'h-24 p-2 border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+    const baseClass = 'h-24 border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
     const isCurrentDay = isToday(date);
     const isCurrentMonthDay = isCurrentMonth(date);
     const tasks = getTasksForDate(date);
@@ -315,14 +317,10 @@
               class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-l-lg font-medium transition-colors text-sm lg:text-base whitespace-nowrap border-r border-blue-500 dark:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               disabled={!stats}
               onclick={() => {
-                if (stats && stats.total_equipment > 0) {
-                  showAddTaskModal = true
-                } else {
-                  showAddEquipmentModal = true
-                }
+                showMechAssistant = true;
               }}
             >
-              {stats && stats.total_equipment === 0 ? "Add Equipment" : "Add Task" }
+              Ask Mech
             </button>
             <!-- Dropdown toggle -->
             <button 
@@ -346,18 +344,24 @@
                     class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
                     disabled={stats?.total_equipment === 0}
                     onclick={() => {
-                      if (stats && stats.total_equipment > 0) {
-                        showAddEquipmentModal = true
-                      } else {
-                        showAddTaskModal = true
-                      }
+                      showAddTaskModal = true
                       showDropdown = false
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M240,192h-8V98.67a16,16,0,0,0-7.12-13.31l-88-58.67a16,16,0,0,0-17.75,0l-88,58.67A16,16,0,0,0,24,98.67V192H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM40,98.67,128,40l88,58.66V192H192V136a8,8,0,0,0-8-8H72a8,8,0,0,0-8,8v56H40ZM176,144v16H136V144Zm-56,16H80V144h40ZM80,176h40v16H80Zm56,0h40v16H136Z"></path>
-                    </svg>
-                      {stats && stats.total_equipment === 0 ? "Add Task" : "Add Equipment" }
+  
+                      Add Task
+                  </button>
+                </div>
+                <div class="">
+                  <button 
+                    class="w-full text-left px-6 py-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-25"
+                    disabled={stats?.total_equipment === 0}
+                    onclick={() => {
+                      showAddEquipmentModal = true
+                      showDropdown = false
+                    }}
+                  >
+                      Add Equipment
                   </button>
                 </div>
               </div>
@@ -589,8 +593,8 @@
           </div>
 
           <!-- Calendar Grid -->
-          <div class="p-2 lg:p-6">
-            <div class="grid grid-cols-7 gap-1">
+          <div class="p-0 lg:p-6">
+            <div class="grid grid-cols-7 gap-0 lg:gap-1">
               <!-- Day headers -->
               {#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as day}
                 <div class="h-8 flex items-center justify-center text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -601,7 +605,7 @@
               <!-- Calendar days -->
               {#each calendarDays as day (day.toISOString())}
                 <div class={getDayClass(day)}>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  <div class="text-sm font-medium  m-1 mr-0">
                     {day.getDate()}
                   </div>
                   <div class="space-y-1">
@@ -652,4 +656,13 @@
   {equipment}
   taskCompleted={handleTaskCompleted}
   onCloseModal={() => showCompleteTaskModal = false}
+/>
+
+<MechAssistant 
+  isOpen={showMechAssistant}
+  {equipment}
+  {taskTypes}
+  {equipmentTypes}
+  onSuccess={loadData}
+  onClose={() => showMechAssistant = false}
 />

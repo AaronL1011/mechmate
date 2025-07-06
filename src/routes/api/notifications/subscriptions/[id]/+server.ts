@@ -4,6 +4,9 @@ import { notificationSubscriptionRepository } from '$lib/repositories.js';
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
+		if (!params.id) {
+			return json({ error: 'Missing ID' }, { status: 400 });
+		}
 		const subscriptionId = parseInt(params.id);
 
 		if (isNaN(subscriptionId)) {

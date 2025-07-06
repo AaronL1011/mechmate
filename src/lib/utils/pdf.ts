@@ -14,7 +14,7 @@ function generateTableRow(completion: TaskCompletion, equipment: Equipment): str
                   </tr>
                 `);
 }
-export const createReportHTML = (equipment: Equipment, completions: TaskCompletion[]) => {
+export const createReportHTML = (equipment: Equipment, completions: TaskCompletion[], equipmentTypeName?: string) => {
     return `
       <!DOCTYPE html>
       <html>
@@ -39,7 +39,7 @@ export const createReportHTML = (equipment: Equipment, completions: TaskCompleti
           
           <div class="equipment-info">
             <h3>Equipment Details</h3>
-            <p><strong>Type:</strong> ${equipment.type}</p>
+            <p><strong>Type:</strong> ${equipmentTypeName || 'Unknown'}</p>
             ${equipment.make ? `<p><strong>Make:</strong> ${equipment.make}</p>` : ''}
             ${equipment.model ? `<p><strong>Model:</strong> ${equipment.model}</p>` : ''}
             ${equipment.year ? `<p><strong>Year:</strong> ${equipment.year}</p>` : ''}

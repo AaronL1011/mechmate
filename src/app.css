@@ -3,6 +3,8 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+@utility scrollbar-hidden {  &::-webkit-scrollbar {    display: none;  }}
+
 @theme {
   --default-font-family: "Jetbrains Mono", monospace;
 }
