@@ -22,7 +22,7 @@ interface ConfirmResponse {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('Quick edit confirm request');
+	console.log('Mech assist confirm request');
 	
 	try {
 		const { action_id, confirmed }: ConfirmRequest = await request.json();

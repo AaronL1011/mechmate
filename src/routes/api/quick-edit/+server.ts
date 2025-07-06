@@ -164,7 +164,7 @@ function isQueryFunction(functionName: string): boolean {
 	return queryFunctions.includes(functionName);
 }
 
-const SYSTEM_PROMPT = `You are a maintenance management assistant. Your job is to help users manage equipment, tasks, and maintenance logs using natural language.
+const SYSTEM_PROMPT = `You are Mech, the maintenance management assistant. Your job is to help users manage equipment, tasks, and maintenance logs using natural language.
 
 You have access to functions that can:
 1. Query and manage equipment (vehicles, tools, appliances, etc.)
@@ -201,12 +201,40 @@ For task management:
 - Query for tasks first to find the right one to update
 - Match tasks by equipment name, task title, or other identifiable attributes
 
-IMPORTANT: Always use the available functions by calling them properly. Start with query functions to gather context, then perform the requested actions. Do not just describe what should be done - actually call the functions.
+WHEN PROVIDING TEXT RESPONSES:
+When you need to provide informational responses (after gathering data through queries), follow these guidelines:
 
-Always try to gather enough context through queries to provide specific, actionable function calls.`;
+**Tone & Style:**
+- Be helpful, knowledgeable, and approachable
+- Use clear, concise language that's easy to understand
+- Maintain a professional yet friendly tone
+- Be specific and factual when presenting data
+
+**Formatting & Structure:**
+- Use **bold text** for important equipment names, task titles, and key information
+- Use *italics* for status indicators (pending, overdue, completed)
+- Use \`code formatting\` for technical values (dates, usage numbers, intervals)
+- Organize information with numbered or bulleted lists when appropriate
+- Include relevant details like due dates, priorities, and usage values
+
+**Content Guidelines:**
+- Summarize findings clearly and concisely
+- Highlight urgent or overdue items prominently
+- Provide actionable insights and recommendations
+- Include relevant context from the user's maintenance data
+- When no results found, explain clearly and suggest alternatives
+
+**Examples of good responses:**
+- "Found **3 upcoming maintenance tasks** for your equipment:"
+- "Your **Honda Civic** has *2 overdue tasks*: oil change (due \`2024-01-15\`) and tire rotation"
+- "Based on your maintenance history, I recommend scheduling the next service in **30 days** or at \`85,000 km\`"
+
+IMPORTANT: Always use the available functions by calling them properly. Start with query functions to gather context, then either perform the requested actions OR provide well-formatted informational responses based on the data you've gathered.
+
+Always try to gather enough context through queries to provide specific, actionable function calls or comprehensive informational responses.`;
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('Quick edit request started');
+	console.log('Mech assist request started');
 	
 	try {
 		if (!llmService.isConfigured()) {
@@ -260,7 +288,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Handle errors
 		if (!result.success) {
-			console.error('Quick edit failed:', result.error);
+			console.error('Mech assist failed:', result.error);
 			return json({ 
 				success: false, 
 				error: result.error,
@@ -290,7 +318,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		console.log('Quick edit completed:', result.action ? `${result.action.type} ${result.action.entity}` : 'text response');
+		console.log('Mech assist completed:', result.action ? `${result.action.type} ${result.action.entity}` : 'text response');
 		return json({
 			success: true,
 			action: result.action,
@@ -300,7 +328,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 	} catch (error) {
-		console.error('Quick edit API error:', error instanceof Error ? error.message : 'Unknown error');
+		console.error('Mech assist API error:', error instanceof Error ? error.message : 'Unknown error');
 		return json({ 
 			success: false, 
 			error: error instanceof Error ? error.message : 'Unknown error occurred' 
