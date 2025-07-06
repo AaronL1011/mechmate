@@ -12,6 +12,8 @@ import type { Database } from '$lib/types/db';
 interface ConfirmRequest {
 	action_id: string;
 	confirmed: boolean;
+	updated_data?: any;
+	user_feedback?: string;
 }
 
 interface ConfirmResponse {
@@ -25,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	console.log('Mech assist confirm request');
 	
 	try {
-		const { action_id, confirmed }: ConfirmRequest = await request.json();
+		const { action_id, confirmed, updated_data, user_feedback }: ConfirmRequest = await request.json();
 
 		if (!action_id) {
 			return json({ 
@@ -53,6 +55,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				success: true,
 				message: 'Action cancelled'
 			});
+		}
+
+		// Update action data if user provided modifications
+		if (updated_data) {
+			console.log('Applying user modifications to action data');
+			action.data = { ...action.data, ...updated_data };
+		}
+
+		// Log user feedback if provided
+		if (user_feedback) {
+			console.log('User feedback:', user_feedback);
+			// TODO: Could potentially re-process user feedback with LLM to make further adjustments
 		}
 
 		// Execute the confirmed action

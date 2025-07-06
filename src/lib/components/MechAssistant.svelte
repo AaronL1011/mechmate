@@ -89,6 +89,7 @@
       } else if (data.message) {
         // Text response from LLM
         responseMessage = data.message;
+        input = '';
       }
       
     } catch (error) {
@@ -99,7 +100,7 @@
     }
   }
 
-  async function confirmAction() {
+  async function confirmAction(updatedData?: any, userFeedback?: string) {
     if (!actionId) return;
     
     isConfirming = true;
@@ -113,7 +114,9 @@
         },
         body: JSON.stringify({
           action_id: actionId,
-          confirmed: true
+          confirmed: true,
+          updated_data: updatedData,
+          user_feedback: userFeedback
         })
       });
       
