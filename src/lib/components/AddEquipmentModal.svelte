@@ -71,7 +71,6 @@
     // Reset form
     formData = {
       name: '',
-      type: '',
       equipment_type_id: undefined,
       make: '',
       model: '',

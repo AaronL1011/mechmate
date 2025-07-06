@@ -1,13 +1,14 @@
 # Mechmate
-![mechmate home dashboard](./screenshot.png)
-
 A personal maintenance scheduler and tracker app for DIY and mechanical enthusiasts. Mechmate provides a simple platform to log different mechanical equipment, configure maintenance schedules, get a personalized dashboard with upcoming maintenance tasks, recieve push notifications about upcoming jobs and export log history of equipment for use in resale or book-keeping.
+
+![mechmate home dashboard](./screenshot.png)
 
 ## Features
 
 - **Equipment Management**: Track vehicles, appliances, tools, devices, and other types of mechanical equipment requiring routine maintenance
-- **Flexible Usage Metrics**: Support for different usage types (mileage, hours, cycles, etc.)
 - **Dynamic Task Creation**: Create custom maintenance tasks with flexible scheduling
+- **Mech Assist**: AI-driven actions and insights for your equipment, tasks and logs with OpenAI integration
+- **Quick Edit Actions**: Natural language commands for equipment and task management via LLM processing
 - **Recurring Tasks**: Set up tasks that repeat based on usage or time intervals
 - **Maintenance History**: Complete audit trail of all maintenance performed
 - **Dashboard Overview**: Personalized view of upcoming and overdue maintenance
@@ -17,9 +18,11 @@ A personal maintenance scheduler and tracker app for DIY and mechanical enthusia
 
 ## Tech Stack
 
-- **Frontend**: SvelteKit 5 with TypeScript
+- **Frontend**: SvelteKit 5 PWA with TypeScript
 - **Styling**: Tailwind CSS 4
-- **Database**: SQLite with better-sqlite3 and Kysely
+- **Database**: SQLite with better-sqlite3 and Kysely query builder
+- **AI/LLM**: OpenAI API integration with configurable models and parameters
+- **AI Actions**: Quick Edit Actions table for natural language command processing
 - **Notifications**: web-push
 - **Deployment**: Docker with nginx reverse proxy
 - **SSL**: Automatic HTTPS with Let's Encrypt
@@ -36,7 +39,31 @@ A personal maintenance scheduler and tracker app for DIY and mechanical enthusia
 ## With Docker
 
 1. Clone the repository and navigate to the project directory
-2. Build and start the application:
+2. Ensure you've defined the relevant `.env` values and are providing them to your docker configuration.
+  ```
+    OPENAI_API_KEY=<your-api-key>
+    OPENAI_BASE_URL=https://openrouter.ai/api/v1
+    OPENAI_MODEL=openai/gpt-4o-mini
+    OPENAI_TEMPERATURE=0.1
+    OPENAI_MAX_TOKENS=1000
+  ```
+
+### Supported LLM Models
+
+Mechmate supports any OpenAI-compatible API endpoint. Common configurations:
+
+**OpenAI Direct:**
+- `OPENAI_BASE_URL=https://api.openai.com/v1`
+- `OPENAI_MODEL=gpt-4o-mini` or `gpt-4o`
+
+**OpenRouter (Multiple Providers):**
+- `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
+- `OPENAI_MODEL=openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.1-70b-instruct`
+
+**Local Models (Ollama/LM Studio):**
+- `OPENAI_BASE_URL=http://localhost:11434/v1` (Ollama)
+- `OPENAI_MODEL=llama3.1:8b` or any local model name
+3. Build and start the application:
 
 ```bash
 docker build -t mechmate .
@@ -58,6 +85,12 @@ mechmate:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE}
+      - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS}
 
 ```
 2. Build and run the app with:
@@ -65,6 +98,8 @@ mechmate:
 docker compose up -d mechmate
 ```
 3. Access the application at `http://localhost:3000` (or otherwise configured port / domain)
+
+**Note**: Some infra config assembly required, feel free to ask how to roll it yourself. I'm personally running this on a home server and expose the service via a private VPN between my personal devices, with SSL & domains configured via cloudflare & an nginx reverse-proxy. 
 
 
 ### Development
@@ -99,6 +134,12 @@ The application will be available at `http://localhost:5173`
 - ~~File attachment support~~ (coming soon)
 - Service provider information
 
+### AI Features
+- **Quick Edit Actions**: Natural language commands processed by LLM
+- **Action Status Tracking**: pending, confirmed, cancelled, executed states
+- **Action History**: Complete audit trail of AI-interpreted actions
+- **Configurable Models**: Support for OpenAI and OpenRouter compatible APIs
+
 ## API Endpoints
 
 ### Equipment
@@ -119,6 +160,10 @@ The application will be available at `http://localhost:5173`
 - `GET /api/tasks?type=overdue` - Get overdue tasks
 - `POST /api/tasks` - Create new task
 - `POST /api/tasks/complete` - Mark a task complete and generate a log entry
+
+### AI Quick Actions
+- `POST /api/quick-edit` - Submit natural language commands for LLM processing
+- `POST /api/quick-edit/confirm` - Confirm AI-interpreted actions
 
 ### Task Types
 - `GET /api/task-types` - List predefined task types
