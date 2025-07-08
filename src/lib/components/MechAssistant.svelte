@@ -205,7 +205,7 @@
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Mech Assistant</h2>
         </div>
         <p class="text-sm text-gray-600 dark:text-gray-400">
-          Ask me to create equipment, schedule and update tasks, or log some completed maintenance
+          I can help you answer questions, create equipment and tasks, or log a completed job
         </p>
       </div>
       

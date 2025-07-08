@@ -85,7 +85,8 @@ function convertSettingValue<T>(value: string, dataType: string, defaultValue: T
 
 function getDefaultSettings(): GlobalSettingsValues {
 	return {
-		upcoming_task_range_days: 90
+		upcoming_task_range_days: 90,
+		preferred_measurement_system: 'metric'
 	};
 }
 
