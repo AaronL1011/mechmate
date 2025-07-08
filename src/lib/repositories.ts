@@ -8,7 +8,6 @@ import type {
 	DashboardStats,
 	CreateEquipmentRequest,
 	CreateTaskRequest,
-	CompleteTaskRequest,
 	UpdateEquipmentRequest,
 	UpdateTaskRequest,
 	NewEquipment,
@@ -20,16 +19,12 @@ import type {
 	NotificationSettings,
 	NotificationLog,
 	NewNotificationSubscription,
-	NewNotificationSettings,
 	NewNotificationLog,
 	NotificationSettingsRequest,
 	NotificationSettingsDisplay,
 	PushSubscriptionData,
 	GlobalSetting,
-	NewGlobalSetting,
-	GlobalSettingUpdate,
-	GlobalSettingsValues,
-	UpdateGlobalSettingRequest
+	GlobalSettingsValues
 } from './types/db.js';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
@@ -86,7 +81,8 @@ function convertSettingValue<T>(value: string, dataType: string, defaultValue: T
 function getDefaultSettings(): GlobalSettingsValues {
 	return {
 		upcoming_task_range_days: 90,
-		preferred_measurement_system: 'metric'
+		preferred_measurement_system: 'metric',
+		assistant_tone: 'professional'
 	};
 }
 

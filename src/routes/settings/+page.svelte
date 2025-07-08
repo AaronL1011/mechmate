@@ -10,7 +10,8 @@
 	let notificationSuccess = '';
 	let settings: GlobalSettingsValues = {
 		upcoming_task_range_days: 90,
-		preferred_measurement_system: 'metric'
+		preferred_measurement_system: 'metric',
+    assistant_tone: 'professional'
 	};
 
 	// Notification settings
@@ -433,7 +434,8 @@
 	function resetToDefaults() {
 		formValues = {
 			upcoming_task_range_days: 90,
-			preferred_measurement_system: 'metric'
+			preferred_measurement_system: 'metric',
+      assistant_tone: 'professional'
 		};
 	}
 
@@ -551,6 +553,33 @@
 							</select>
 							<p class="text-sm text-gray-500 dark:text-gray-400">
 								Preferred measurement system to use within the application. Currently set to {settings.preferred_measurement_system}.
+							</p>
+						</div>
+					</div>
+          <!-- Preferred Measurement System Setting -->
+					<div class="space-y-2">
+						<label
+							for="upcoming_task_range_days"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
+							Assistant Tone
+						</label>
+						<div class="space-y-1">
+							<select
+								id="assistant_tone"
+								name="assistant_tone"
+								bind:value={formValues.assistant_tone}
+								required
+								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+							>
+								<option value="professional">Professional</option>
+								<option value="friendly">Friendly</option>
+								<option value="blunt">Blunt</option>
+								<option value="educational">Educational</option>
+								<option value="cheeky">Cheeky</option>
+							</select>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Preferred conversational style of the mechmate assistant. Currently set to {settings.assistant_tone}.
 							</p>
 						</div>
 					</div>

@@ -4,6 +4,7 @@ import { llmService, type LLMMessage } from '$lib/services/llm.js';
 import { FunctionExecutor, allFunctions, type ActionResult } from '$lib/services/functions.js';
 import { v4 as uuidv4 } from 'uuid';
 import { globalSettingsRepository } from '$lib/repositories';
+import type { GlobalSettingsValues } from '$lib/types/db';
 
 interface QuickEditRequest {
 	prompt: string;
@@ -167,14 +168,13 @@ function isQueryFunction(functionName: string): boolean {
 
 const SYSTEM_PROMPT = `You are Mech, the maintenance management assistant. Your job is to help users manage equipment, tasks, and maintenance logs using natural language while promoting learning and mechanical understanding.
 
+The context includes a global setting called \`assistant_tone\`, which determines how Mech responds, use this tone strictly and consistently in your responses.
+
 Capabilities:
 You have access to functions that can:
 1. Query and manage equipment (vehicles, tools, appliances, etc.)
 2. Query and manage maintenance tasks (inspections, fluid changes, cleaning, etc.)
 3. Log completed maintenance work
-
-CORE PHILOSOPHY – EDUCATION THROUGH ASSISTANCE
-Your goal is to reduce user workload while helping them build mechanical knowledge. Each interaction should—when helpful—teach something useful about equipment care, maintenance theory, or how mechanical systems function.
 
 WORKFLOW PRINCIPLES
 Always gather context before taking action:
@@ -226,35 +226,16 @@ Best Practices:
 - Offer tips to extend lifespan or reduce costs
 - Help users decide when to DIY vs seek professional help
 
-RESPONSE GUIDELINES
+Response guidelines:
+- Tailor tone based on \`assistant_tone\`
+- Clearly summarize findings and include actionable advice
+- Highlight overdue or missing tasks
+- Use concise formatting: bold key info, code-style for dates and values, optional bullet points
+- When helpful, include short educational notes
 
-Tone & Style:
-- Be helpful, knowledgeable, and approachable
-- Use clear, concise, professional language
-- Maintain a friendly tone with educational undertones
-- Avoid overly casual or robotic responses
-
-Formatting:
-- **Bold** important equipment names, task titles, and key information
-- *Italicize* status indicators (e.g. *pending*, *overdue*, *completed*)
-- Use \`code formatting\` for technical values (dates, usage values, intervals)
-- Use bulleted or numbered lists when helpful
-- Add educational notes as separate paragraphs or bullets when relevant
-
-Content:
-- Summarize findings clearly and concisely
-- Highlight urgent or overdue items
-- Provide actionable insights with relevant educational context
-- If no results are found, explain why and suggest alternatives
-- When helpful, include brief insights that aid the user's understanding
-
-Examples of responses:
-- "Found **3 upcoming maintenance tasks** for your equipment. The oil change is most critical, as engine oil degrades over time and loses its lubricating properties, increasing engine wear."
-- "Your **Honda Civic** has *2 overdue tasks*: oil change (due \`2024-01-15\`) and tire rotation. Skipping these may reduce fuel efficiency and accelerate component wear."
-- "Based on your maintenance history, I recommend scheduling the next service in **30 days** or at \`85,000 km\`. This aligns with your engine’s thermal cycling intervals."
 
 FINAL NOTE
-Always begin with query functions to gather context. Then, based on that data, either perform the necessary function calls or generate a well-formatted, informative response that includes educational value where relevant.`;
+Always begin with query functions to gather context. Then, based on that data, either perform the necessary function calls or generate a well-formatted, informative response that aligns with configured tone.`;
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	console.log('Mech assist request started');
@@ -286,8 +267,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const equipmentTypes = await executor.executeFunction('get_equipment_types', {});
 			const taskTypes = await executor.executeFunction('get_task_types', {});
 			const unitSetting = await globalSettingsRepository.getTypedValue(locals.db, 'preferred_measurement_system', 'metric')
+			const toneSetting = await globalSettingsRepository.getTypedValue(locals.db, 'assistant_tone', 'professional') as GlobalSettingsValues['assistant_tone'];
 
-			contextData.preferred_measurement_system = unitSetting
+			contextData.preferred_measurement_system = unitSetting;
+			contextData.assistant_tone = getAssistantToneContext(toneSetting);
 
 			if (equipmentTypes.result) {
 				contextData.available_equipment_types = equipmentTypes.result;
@@ -361,6 +344,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}, { status: 500 });
 	}
 };
+
+const getAssistantToneContext = (tone: GlobalSettingsValues['assistant_tone']) => {
+	switch (tone) {
+		case 'friendly':
+			return "Give small affirmations and emotional support for those new to maintenance or trying to stay on top of things."
+		case 'blunt':
+			return "Be minimal and curt, never more than a few words in a response and respond bluntly. Ideal for power users or those who want zero filler."
+		case 'educational':
+			return "Add explanations and small learning moments when relevant to promote mechanical literacy."
+		case 'cheeky':
+			return "Respond with wit and dry humour, reminiscent of a sharp-tongued veteran mechanic."
+		case 'professional':
+		default:
+			return "Respond clear, concise and task-focused. No fluff. Ideal for mechanics, fleet managers, or workshop staff who want efficiency."
+	}
+}
 
 // Export pending actions for confirmation endpoint
 export { _pendingActions };

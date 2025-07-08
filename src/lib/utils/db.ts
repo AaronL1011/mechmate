@@ -334,6 +334,13 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 			data_type: 'string' as const,
 			description: 'The users preferred measurement system',
 			default_value: 'metric',
+		},
+		{
+			setting_key: 'assistant_tone',
+			setting_value: 'professional',
+			data_type: 'string' as const,
+			description: 'The conversational style of the mech assistant',
+			default_value: 'professional',
 		}
 	];
 

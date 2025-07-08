@@ -305,7 +305,8 @@ export type GlobalSettingUpdate = Updateable<GlobalSettingsTable>;
 // Application-Level Global Settings Types
 export interface GlobalSettingsValues {
 	upcoming_task_range_days: number;
-	preferred_measurement_system: 'metric' | 'imperial'
+	preferred_measurement_system: 'metric' | 'imperial';
+	assistant_tone: 'professional' | 'friendly' | 'blunt' | 'educational' | 'cheeky'
 }
 
 export interface UpdateGlobalSettingRequest {
