@@ -176,6 +176,24 @@
       }
     }
   }
+
+  function getLoadingText(): string {
+    const loadingTexts = [
+      "Turning cogs...",
+      "Throwing darts...",
+      "Building torque...",
+      "Testing circuits...",
+      "Tensioning belts...",
+      "Inspecting fluids...",
+      "Scanning codes...",
+      "Opening valves...",
+      "Rolling bearings...",
+      "Lubricating shafts...",
+      "Torquing bolts...",
+    ];
+    
+    return loadingTexts[Math.floor(Math.random() * loadingTexts.length)];
+  }
 </script>
 
 {#if isOpen}
@@ -270,7 +288,7 @@
             onclick={processInput}
             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isProcessing ? 'Processing...' : 'Submit'}
+            {isProcessing ? getLoadingText() : 'Submit'}
           </button>
         </div>
       {/if}
