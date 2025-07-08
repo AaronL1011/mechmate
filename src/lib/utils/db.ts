@@ -327,6 +327,13 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 			default_value: '90',
 			min_value: '1',
 			max_value: '365'
+		},
+		{
+			setting_key: 'preferred_measurement_system',
+			setting_value: 'metric',
+			data_type: 'string' as const,
+			description: 'The users preferred measurement system',
+			default_value: 'metric',
 		}
 	];
 

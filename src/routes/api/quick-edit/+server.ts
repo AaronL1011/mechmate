@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { llmService, type LLMMessage } from '$lib/services/llm.js';
 import { FunctionExecutor, allFunctions, type ActionResult } from '$lib/services/functions.js';
 import { v4 as uuidv4 } from 'uuid';
+import { globalSettingsRepository } from '$lib/repositories';
 
 interface QuickEditRequest {
 	prompt: string;
@@ -284,7 +285,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		try {
 			const equipmentTypes = await executor.executeFunction('get_equipment_types', {});
 			const taskTypes = await executor.executeFunction('get_task_types', {});
-			
+			const unitSetting = await globalSettingsRepository.getTypedValue(locals.db, 'preferred_measurement_system', 'metric')
+
+			contextData.preferred_measurement_system = unitSetting
+
 			if (equipmentTypes.result) {
 				contextData.available_equipment_types = equipmentTypes.result;
 			}
