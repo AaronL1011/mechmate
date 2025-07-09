@@ -12,6 +12,8 @@ export interface Database {
 	notification_log: NotificationLogTable;
 	global_settings: GlobalSettingsTable;
 	quick_edit_actions: QuickEditActionsTable;
+	instance_metadata: InstanceMetadataTable;
+	system_info: SystemInfoTable;
 }
 
 export interface EquipmentTable {
@@ -27,6 +29,7 @@ export interface EquipmentTable {
 	usage_unit: string;
 	metadata?: string; // JSON string for flexible equipment-specific data
 	tags?: string; // JSON array of tags
+	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, never>;
 }
@@ -69,6 +72,7 @@ export interface TasksTable {
 	next_due_date?: string;
 	priority: 'low' | 'medium' | 'high' | 'critical';
 	status: 'pending' | 'completed' | 'overdue';
+	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, never>;
 }
@@ -87,6 +91,7 @@ export interface MaintenanceLogsTable {
 	cost?: number;
 	parts_used?: string; // JSON array of parts
 	service_provider?: string;
+	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 }
 
@@ -210,6 +215,7 @@ export interface NotificationSubscriptionsTable {
 	p256dh_key: string;
 	auth_key: string;
 	user_agent?: string;
+	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 	last_used_at: ColumnType<Date, string | undefined, never>;
 }
@@ -340,3 +346,30 @@ export interface QuickEditActionsTable {
 export type QuickEditAction = Selectable<QuickEditActionsTable>;
 export type NewQuickEditAction = Insertable<QuickEditActionsTable>;
 export type QuickEditActionUpdate = Updateable<QuickEditActionsTable>;
+
+// Instance Metadata Table
+export interface InstanceMetadataTable {
+	id: Generated<number>;
+	instance_id: string;
+	version: string;
+	deployment_type: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+	last_updated: ColumnType<Date, string | undefined, never>;
+	settings?: string; // JSON string
+}
+
+export type InstanceMetadata = Selectable<InstanceMetadataTable>;
+export type NewInstanceMetadata = Insertable<InstanceMetadataTable>;
+export type InstanceMetadataUpdate = Updateable<InstanceMetadataTable>;
+
+// System Info Table
+export interface SystemInfoTable {
+	id: Generated<number>;
+	info_type: string; // 'startup', 'health_check', 'error'
+	data: string; // JSON string
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type SystemInfo = Selectable<SystemInfoTable>;
+export type NewSystemInfo = Insertable<SystemInfoTable>;
+export type SystemInfoUpdate = Updateable<SystemInfoTable>;

@@ -602,7 +602,7 @@
 									on:click={resetForm}
 									class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
 								>
-									Cancel Changes
+									Cancel
 								</button>
 							{/if}
 						</div>
@@ -618,7 +618,7 @@
 									Saving...
 								</div>
 							{:else}
-								Save Settings
+								Save
 							{/if}
 						</button>
 					</div>
@@ -919,25 +919,6 @@
 						{/if}
 					</div>
 				{/if}
-			</div>
-
-			<!-- Settings Information -->
-			<div
-				class="mt-8 rounded-lg border border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-900/20"
-			>
-				<h3 class="mb-2 text-lg font-medium text-blue-900 dark:text-blue-100">About Settings</h3>
-				<div class="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-					<p>
-						<strong>Upcoming Task Range:</strong> Controls how far into the future the application looks
-						when displaying upcoming tasks on the dashboard and in task lists. This affects both the
-						"Upcoming" counter on the dashboard and the tasks shown in your upcoming tasks view.
-					</p>
-					<p>
-						<strong>Notifications:</strong> Push notifications help you stay on top of maintenance tasks.
-						Enable notifications and add your devices to receive reminders before tasks are due. You
-						can customize when notifications are sent using the threshold settings.
-					</p>
-				</div>
 			</div>
 		{/if}
 	</main>
