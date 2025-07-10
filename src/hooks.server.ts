@@ -29,11 +29,11 @@ const db = new Kysely<Database>({
 });
 
 await initializeTables(db).catch((err) => {
-	console.error('Failed to initialize tables:', err);
+	console.error('🚨 Failed to initialize tables:', err);
 });
 
 await seedData(db).catch((err) => {
-	console.error('Failed to seed data:', err);
+	console.error('🚨 Failed to seed data:', err);
 });
 
 // Start notification scheduler

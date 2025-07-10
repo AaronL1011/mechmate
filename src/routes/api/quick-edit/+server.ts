@@ -22,8 +22,31 @@ interface QuickEditResponse {
 	requires_more_info?: boolean;
 }
 
-// Store pending actions in memory (in production, use Redis or database)
-const _pendingActions = new Map<string, ActionResult>();
+// Store pending actions in memory with TTL (in production, use Redis or database)
+interface PendingActionEntry {
+	action: ActionResult;
+	expires: number;
+}
+
+const _pendingActions = new Map<string, PendingActionEntry>();
+const ACTION_TTL_MS = 2 * 60 * 1000; // 2 minutes TTL
+
+// Cleanup expired actions periodically
+setInterval(() => {
+	const now = Date.now();
+	let cleanedCount = 0;
+	
+	for (const [key, entry] of _pendingActions.entries()) {
+		if (now > entry.expires) {
+			_pendingActions.delete(key);
+			cleanedCount++;
+		}
+	}
+	
+	if (cleanedCount > 0) {
+		console.log(`🧹 Cleaned up ${cleanedCount} expired pending actions`);
+	}
+}, 30000); // Check every 30 seconds
 
 // Progressive conversation processing
 async function processConversation(
@@ -323,15 +346,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (result.action && result.action.requires_confirmation) {
 			const actionId = uuidv4();
 			console.log('Action requires confirmation:', result.action.type, result.action.entity);
-			_pendingActions.set(actionId, result.action);
-
-			// Clean up old actions
-			if (_pendingActions.size > 100) {
-				const keys = Array.from(_pendingActions.keys());
-				for (let i = 0; i < 50; i++) {
-					_pendingActions.delete(keys[i]);
-				}
-			}
+			
+			// Store with TTL
+			_pendingActions.set(actionId, {
+				action: result.action,
+				expires: Date.now() + ACTION_TTL_MS
+			});
 
 			return json({
 				success: true,

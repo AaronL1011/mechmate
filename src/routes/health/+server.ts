@@ -1,8 +1,9 @@
 // Health check endpoint for Mechmate
+import v8 from 'v8';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { getConfig, getDatabasePath } from '$lib/config.js';
-import { existsSync, statSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { performance } from 'perf_hooks';
 
 interface HealthCheck {
@@ -156,31 +157,68 @@ async function checkFilesystem(): Promise<HealthStatus> {
 	}
 }
 
-function checkMemory(): HealthStatus {
-	const usage = process.memoryUsage();
-	const totalMemoryMB = usage.heapTotal / 1024 / 1024;
-	const usedMemoryMB = usage.heapUsed / 1024 / 1024;
-	const usagePercent = (usedMemoryMB / totalMemoryMB) * 100;
+function readCgroupLimitBytes(): number | undefined {
+	// cgroup v2
+	const v2Path = '/sys/fs/cgroup/memory.max';
+	if (existsSync(v2Path)) {
+		const raw = readFileSync(v2Path, 'utf8').trim();
+		return raw === 'max' ? undefined : Number(raw);
+	}
 
-	// Warning thresholds
-	const status = usagePercent > 90 ? 'fail' : usagePercent > 75 ? 'warn' : 'pass';
+	// cgroup v1
+	const v1Path = '/sys/fs/cgroup/memory/memory.limit_in_bytes';
+	if (existsSync(v1Path)) {
+		const raw = readFileSync(v1Path, 'utf8').trim();
+		const val = Number(raw);
+		// Docker leaves this at an absurdly large value when no limit is set
+		return val >= 0xffff_ffff_ffff ? undefined : val;
+	}
+
+	return undefined;
+}
+
+function checkMemory(): HealthStatus {
+	const mem = process.memoryUsage();
+	const heapUsedMB = mem.heapUsed / 1024 / 1024;
+	const rssMB = mem.rss / 1024 / 1024;
+
+	// V8 heap head-room
+	const heapCapMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
+	const heapRatio = heapUsedMB / heapCapMB; // 0-1
+
+	// Container / host head-room
+	const limitBytes = readCgroupLimitBytes();
+	const memCapMB = limitBytes ? limitBytes / 1024 / 1024 : undefined;
+	const rssRatio = memCapMB ? rssMB / memCapMB : 0; // if unlimited, treat as 0
+
+	// Pick the worse of the two ratios
+	const ratio = Math.max(heapRatio, rssRatio);
+	const usagePercent = ratio * 100;
+
+	const status =
+		usagePercent > 80
+			? 'fail'
+			: usagePercent > 65
+				? 'warn'
+				: 'pass';
 
 	const message =
 		status === 'fail'
-			? 'High memory usage detected'
+			? 'Memory headroom critically low'
 			: status === 'warn'
-				? 'Elevated memory usage'
+				? 'Memory headroom shrinking'
 				: 'Memory usage normal';
 
 	return {
 		status,
 		message,
 		details: {
-			heap_used_mb: Math.round(usedMemoryMB * 100) / 100,
-			heap_total_mb: Math.round(totalMemoryMB * 100) / 100,
-			usage_percent: Math.round(usagePercent * 100) / 100,
-			rss_mb: Math.round((usage.rss / 1024 / 1024) * 100) / 100,
-			external_mb: Math.round((usage.external / 1024 / 1024) * 100) / 100
+			heap_used_mb: Math.round(heapUsedMB * 100) / 100,
+			heap_cap_mb: Math.round(heapCapMB * 100) / 100,
+			heap_usage_percent: Math.round(heapRatio * 10000) / 100,
+			rss_mb: Math.round(rssMB * 100) / 100,
+			mem_cap_mb: memCapMB ? Math.round(memCapMB * 100) / 100 : -1, // -1 means “unlimited”
+			rss_usage_percent: memCapMB ? Math.round(rssRatio * 10000) / 100 : -1
 		}
 	};
 }

@@ -41,9 +41,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Get the pending action
-		const action = _pendingActions.get(action_id);
+		const actionEntry = _pendingActions.get(action_id);
 
-		if (!action) {
+		if (!actionEntry) {
 			return json(
 				{
 					success: false,
@@ -52,6 +52,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 404 }
 			);
 		}
+
+		// Check if action has expired
+		if (Date.now() > actionEntry.expires) {
+			_pendingActions.delete(action_id);
+			return json(
+				{
+					success: false,
+					error: 'Action has expired'
+				},
+				{ status: 410 }
+			);
+		}
+
+		const action = actionEntry.action;
 
 		// Remove from pending actions
 		_pendingActions.delete(action_id);
