@@ -1,191 +1,235 @@
-# Mechmate
-A personal maintenance scheduler and tracker app for DIY and mechanical enthusiasts. Mechmate provides a simple platform to log different mechanical equipment, configure maintenance schedules, get a personalized dashboard with upcoming maintenance tasks, recieve push notifications about upcoming jobs and export log history of equipment for use in resale or book-keeping.
+# Mechmate Self-Hosted
+
+A personal maintenance management system for tracking equipment, scheduling maintenance tasks, and managing repair history.
 
 ![mechmate home dashboard](./screenshot.png)
 
 ## Features
 
-- **Equipment Management**: Track vehicles, appliances, tools, devices, and other types of mechanical equipment requiring routine maintenance
-- **Dynamic Task Creation**: Create custom maintenance tasks with flexible scheduling
-- **Mech Assist**: AI-driven actions and insights for your equipment, tasks and logs with OpenAI integration
-- **Quick Edit Actions**: Natural language commands for equipment and task management via LLM processing
-- **Recurring Tasks**: Set up tasks that repeat based on usage or time intervals
-- **Maintenance History**: Complete audit trail of all maintenance performed
-- **Dashboard Overview**: Personalized view of upcoming and overdue maintenance
-- **Task Notifications**: Push notifications to compatible devices to remind you of upcoming tasks
-- **File Attachments**: Attach invoices, photos, and documentation to maintenance logs
-- **Beautiful UI**: Modern, responsive interface built with SvelteKit and Tailwind CSS
+- **Equipment Management** - Track vehicles, appliances, tools, devices, and mechanical equipment
+- **Maintenance Scheduling** - Time-based or usage-based maintenance intervals  
+- **AI Assistant** - Natural language equipment and task management
+- **Maintenance History** - Complete audit trail with cost tracking
+- **Push Notifications** - Maintenance reminders (optional)
+- **Automatic Backups** - Scheduled database backups with retention
+- **Beautiful UI** - Modern, responsive interface built with SvelteKit and Tailwind CSS
 
 ## Tech Stack
 
-- **Frontend**: SvelteKit 5 PWA with TypeScript
+- **Frontend**: SvelteKit 5 with TypeScript
 - **Styling**: Tailwind CSS 4
 - **Database**: SQLite with better-sqlite3 and Kysely query builder
-- **AI/LLM**: OpenAI API integration with configurable models and parameters
-- **AI Actions**: Quick Edit Actions table for natural language command processing
-- **Notifications**: web-push
-- **Deployment**: Docker with nginx reverse proxy
-- **SSL**: Automatic HTTPS with Let's Encrypt
+- **AI/LLM**: OpenAI API integration with configurable models
+- **Notifications**: Web Push API with VAPID
+- **Deployment**: Docker with production-ready security
 
 ## Quick Start
 
-### Prerequisites
+**Prerequisites:** Docker and Docker Compose installed
 
-- Docker and/or Docker Compose
-- Domain name with SSL certificates (notifications will not function in an unsecure browser environment)
+```bash
+# Clone and deploy
+git clone https://github.com/yourusername/mechmate.git
+cd mechmate
+chmod +x deploy.sh
+./deploy.sh
+```
 
-### Installation
+Access at `http://localhost:3000`
 
-## With Docker
+## Configuration
 
-1. Clone the repository and navigate to the project directory
-2. Ensure you've defined the relevant `.env` values and are providing them to your docker configuration.
-  ```
-    OPENAI_API_KEY=<your-api-key>
-    OPENAI_BASE_URL=https://openrouter.ai/api/v1
-    OPENAI_MODEL=openai/gpt-4o-mini
-    OPENAI_TEMPERATURE=0.1
-    OPENAI_MAX_TOKENS=1000
-  ```
+### Basic Setup
 
-### Supported LLM Models
+Edit `.env` file to customize:
 
-Mechmate supports any OpenAI-compatible API endpoint. Common configurations:
+```bash
+# Application
+PORT=3000
+INSTANCE_NAME="My Mechmate Instance"
+
+# Features (Optional)
+OPENAI_API_KEY=your_openai_key_here
+VAPID_PUBLIC_KEY=your_vapid_public_key
+VAPID_PRIVATE_KEY=your_vapid_private_key
+VAPID_SUBJECT=mailto:admin@yourdomain.com
+
+# Security
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+### AI Assistant Setup
+
+Mechmate supports any OpenAI-compatible API endpoint:
 
 **OpenAI Direct:**
-- `OPENAI_BASE_URL=https://api.openai.com/v1`
-- `OPENAI_MODEL=gpt-4o-mini` or `gpt-4o`
+```bash
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_MODEL=gpt-4o-mini
+```
 
 **OpenRouter (Multiple Providers):**
-- `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
-- `OPENAI_MODEL=openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.1-70b-instruct`
+```bash
+OPENAI_API_KEY=your_openrouter_key_here
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_MODEL=openai/gpt-4o-mini
+```
 
 **Local Models (Ollama/LM Studio):**
-- `OPENAI_BASE_URL=http://localhost:11434/v1` (Ollama)
-- `OPENAI_MODEL=llama3.1:8b` or any local model name
-3. Build and start the application:
-
 ```bash
-docker build -t mechmate .
-
-docker run -d -p 3000:3000 -v path_to_your_volume_folder:/app/data mechmate
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_MODEL=llama3.1:8b
 ```
 
-3. Access the application at `http://localhost:3000` (or otherwise configured port / domain)
+### Push Notifications Setup
 
-## With Docker Compose
+1. Generate VAPID keys: `npx web-push generate-vapid-keys`
+2. Add keys to `.env`
+3. Restart: `docker-compose restart mechmate` 
 
-1. Include the following configuration in your docker-compose.yml file:
-```yml
-mechmate:
-    build: ./mechmate
-    container_name: mechmate
-    volumes:
-      - ./mechmate/data:/app/data
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - OPENAI_MODEL=${OPENAI_MODEL}
-      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE}
-      - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS}
+## Management
 
-```
-2. Build and run the app with:
-```bash
-docker compose up -d mechmate
-```
-3. Access the application at `http://localhost:3000` (or otherwise configured port / domain)
-
-**Note**: Some infra config assembly required, feel free to ask how to roll it yourself. I'm personally running this on a home server and expose the service via a private VPN between my personal devices, with SSL & domains configured via cloudflare & an nginx reverse-proxy. 
-
-
-### Development
-
-For local development:
+### Daily Operations
 
 ```bash
-cd mechmate
+# View logs
+docker-compose logs -f mechmate
+
+# Restart service
+docker-compose restart mechmate
+
+# Stop service
+docker-compose down
+
+# Update to latest version
+docker-compose pull && docker-compose up -d
+```
+
+### Monitoring
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# System metrics
+curl http://localhost:3000/api/system/metrics
+
+# Create manual backup
+curl -X POST http://localhost:3000/api/system/backup \
+  -H "Content-Type: application/json" \
+  -d '{"type": "manual"}'
+```
+
+### Data Management
+
+Your data is stored in Docker volumes:
+
+```bash
+# List volumes
+docker volume ls | grep mechmate
+
+# Backup data volume
+docker run --rm -v mechmate_mechmate_data:/data -v $(pwd):/backup ubuntu \
+  tar czf /backup/mechmate-data-backup.tar.gz /data
+
+# Restore data volume
+docker run --rm -v mechmate_mechmate_data:/data -v $(pwd):/backup ubuntu \
+  tar xzf /backup/mechmate-data-backup.tar.gz -C /
+```
+
+## Reverse Proxy Setup
+
+### Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name mechmate.yourdomain.com;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### Traefik
+
+Add labels to `docker-compose.yml`:
+
+```yaml
+services:
+  mechmate:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mechmate.rule=Host(`mechmate.yourdomain.com`)"
+      - "traefik.http.routers.mechmate.entrypoints=websecure"
+      - "traefik.http.routers.mechmate.tls.certresolver=letsencrypt"
+```
+
+## Development
+
+```bash
 npm install
 npm run dev -- --host
 ```
 
-The application will be available at `http://localhost:5173`
+Available at `http://localhost:5173`
 
-## Database Schema
+## Troubleshooting
 
-### Equipment
-- Basic information (name, type, make, model, year)
-- Usage tracking (current value, unit)
-- Flexible metadata storage (JSON)
-- ~~Tagging support~~ (coming soon)
+### Common Issues
 
-### Tasks
-- Equipment association
-- Task type categorization
-- Flexible scheduling (usage-based or time-based)
-- Priority levels and status tracking
+**Port already in use:**
+```bash
+# Change port in .env
+PORT=3001
 
-### Maintenance Logs
-- Completion tracking with metadata
-- Cost and parts tracking
-- ~~File attachment support~~ (coming soon)
-- Service provider information
+# Or find what's using port 3000
+sudo netstat -tulpn | grep 3000
+```
 
-### AI Features
-- **Quick Edit Actions**: Natural language commands processed by LLM
-- **Action Status Tracking**: pending, confirmed, cancelled, executed states
-- **Action History**: Complete audit trail of AI-interpreted actions
-- **Configurable Models**: Support for OpenAI and OpenRouter compatible APIs
+**Database issues:**
+```bash
+# Check database integrity
+docker-compose exec mechmate sqlite3 /app/data/mechmate.db "PRAGMA integrity_check;"
 
-## API Endpoints
+# Restore from backup
+curl -X POST http://localhost:3000/api/system/backup/restore \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "your-backup-file.db"}'
+```
 
-### Equipment
-- `GET /api/equipment` - List all equipment
-- `POST /api/equipment` - Create new equipment
-- `GET /api/equipment/[id]` - Get equipment details
-- `PUT /api/equipment/[id]` - Update equipment
-- `DELETE /api/equipment/[id]` - Delete equipment
+### Debug Mode
 
-### Equipment Types
-- `GET /api/equipment-types` - List predefined equipment types
-- `POST /api/equipment-types` - Create a new equipment type
+```bash
+# Add to .env
+LOG_LEVEL=debug
+ENABLE_DEBUG_LOGS=true
 
+# Restart and check logs
+docker-compose restart mechmate
+docker-compose logs -f mechmate
+```
 
-### Tasks
-- `GET /api/tasks` - List all tasks
-- `GET /api/tasks?type=upcoming` - Get upcoming tasks
-- `GET /api/tasks?type=overdue` - Get overdue tasks
-- `POST /api/tasks` - Create new task
-- `POST /api/tasks/complete` - Mark a task complete and generate a log entry
+## Advanced Configuration
 
-### AI Quick Actions
-- `POST /api/quick-edit` - Submit natural language commands for LLM processing
-- `POST /api/quick-edit/confirm` - Confirm AI-interpreted actions
-
-### Task Types
-- `GET /api/task-types` - List predefined task types
-
-### Dashboard
-- `GET /api/dashboard` - Get dashboard statistics
-
-## Configuration
-
-The application defined a few environment variables in the Dockerfile for configuration:
-
-- `NODE_ENV`: Environment (development/production)
-- `ORIGIN`: Application origin domain
-
-## Data Persistence
-
-The SQLite database directory is mounted as a volume at `/app/data/`. If a file doesn't already exist in the mounted directory, it will be created on first run of the app server.
+See `DEPLOYMENT.md` for detailed configuration options and `.env.example` for all available settings.
 
 ## License
 
-This project is licensed under the GPLv3 License - see the LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 ## Support
 
-For issues and feature requests, please use the GitHub issue tracker.
+- **Documentation**: `DEPLOYMENT.md` for detailed setup
+- **Issues**: GitHub issue tracker
+- **Health Check**: `http://localhost:3000/health`
+
+---
+
+**Note**: This is a self-hosted application designed for personal use. Ensure proper security measures for production deployments.

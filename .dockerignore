@@ -1,0 +1,74 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Build output
+build
+.svelte-kit
+
+# Environment files
+.env.example
+
+# Database files
+data/
+*.db
+*.db-journal
+
+# Logs
+logs
+*.log
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation (exclude from container)
+README.md
+CHANGELOG.md
+docs/
+*.md
+
+# Test files
+coverage/
+.nyc_output
+test/
+tests/
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+
+# Temporary files
+tmp/
+temp/
+
+# Package manager files
+yarn.lock
+pnpm-lock.yaml
+
+# Screenshots and media
+screenshot.png
+*.gif
+*.jpg
+*.jpeg
+*.png
+
+# Development configuration
+eslint.config.js
+prettier.config.js
+.prettierrc*
+
+# Docker files in build context
+Dockerfile*
+docker-compose*.yml
+.dockerignore

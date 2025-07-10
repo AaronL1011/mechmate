@@ -181,6 +181,70 @@ export async function initializeTables(db: Kysely<Database>) {
 	// Quick Edit Actions indexes
 	await db.schema.createIndex('idx_quick_edit_actions_status').ifNotExists().on('quick_edit_actions').column('status').execute();
 	await db.schema.createIndex('idx_quick_edit_actions_created_at').ifNotExists().on('quick_edit_actions').column('created_at').execute();
+
+	// Instance metadata table for deployment tracking
+	await db.schema
+		.createTable('instance_metadata')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('instance_id', 'text', (col) => col.notNull().unique())
+		.addColumn('version', 'text', (col) => col.notNull())
+		.addColumn('deployment_type', 'text', (col) => col.notNull().defaultTo('self-hosted'))
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('last_updated', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('settings', 'text') // JSON for deployment-specific settings
+		.execute();
+
+	// System info table for monitoring and diagnostics
+	await db.schema
+		.createTable('system_info')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('info_type', 'text', (col) => col.notNull()) // 'startup', 'health_check', 'error'
+		.addColumn('data', 'text', (col) => col.notNull()) // JSON data
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.execute();
+
+	// System info indexes
+	await db.schema.createIndex('idx_system_info_type').ifNotExists().on('system_info').column('info_type').execute();
+	await db.schema.createIndex('idx_system_info_created_at').ifNotExists().on('system_info').column('created_at').execute();
+
+	// Add future-proofing user_id columns to core tables (defaulting to 'default_user' for single-user mode)
+	await addColumnIfNotExists(db, 'equipment', 'user_id', 'text', 'default_user');
+	await addColumnIfNotExists(db, 'tasks', 'user_id', 'text', 'default_user');
+	await addColumnIfNotExists(db, 'maintenance_logs', 'user_id', 'text', 'default_user');
+	await addColumnIfNotExists(db, 'notification_subscriptions', 'user_id', 'text', 'default_user');
+}
+
+// Helper function to safely add columns if they don't exist
+async function addColumnIfNotExists(
+	db: Kysely<any>,
+	tableName: string,
+	columnName: string,
+	columnType: string,
+	defaultValue: string
+) {
+	try {
+		// Check if column exists by attempting to query it
+		await db.selectFrom(tableName).select([columnName as any]).limit(1).execute();
+	} catch (error) {
+		// Column doesn't exist, add it
+		console.log(`Adding ${columnName} column to ${tableName} table`);
+		await db.schema
+			.alterTable(tableName)
+			.addColumn(columnName, columnType as any, (col) => col.defaultTo(defaultValue))
+			.execute();
+		
+		// Create index for user_id columns for future multi-user support
+		if (columnName === 'user_id') {
+			await db.schema
+				.createIndex(`idx_${tableName}_user_id`)
+				.ifNotExists()
+				.on(tableName)
+				.column(columnName)
+				.execute();
+		}
+	}
 }
 
 export async function seedData(db: Kysely<Database>) {
@@ -189,6 +253,7 @@ export async function seedData(db: Kysely<Database>) {
 		await seedTaskTypes(txn);
 		await seedNotificationSettings(txn);
 		await seedGlobalSettings(txn);
+		await seedInstanceMetadata(txn);
 	});
 }
 
@@ -334,6 +399,13 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 			data_type: 'string' as const,
 			description: 'The users preferred measurement system',
 			default_value: 'metric',
+		},
+		{
+			setting_key: 'assistant_tone',
+			setting_value: 'professional',
+			data_type: 'string' as const,
+			description: 'The conversational style of the mech assistant',
+			default_value: 'professional',
 		}
 	];
 
@@ -341,5 +413,48 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 		.insertInto('global_settings')
 		.values(defaultGlobalSettings)
 		.onConflict((oc) => oc.doNothing())
+		.execute();
+}
+
+async function seedInstanceMetadata(txn: Transaction<Database>) {
+	// Generate unique instance ID
+	const { v4: uuidv4 } = await import('uuid');
+	const instanceId = uuidv4();
+	
+	// Get version from package.json or environment
+	const version = process.env.MECHMATE_VERSION || '0.0.1';
+	
+	const instanceMetadata = {
+		instance_id: instanceId,
+		version: version,
+		deployment_type: 'self-hosted',
+		settings: JSON.stringify({
+			initialized_at: new Date().toISOString(),
+			deployment_mode: 'production'
+		})
+	};
+
+	await txn
+		.insertInto('instance_metadata')
+		.values(instanceMetadata)
+		.onConflict((oc) => oc.doNothing())
+		.execute();
+
+	// Log initial startup info
+	const startupInfo = {
+		info_type: 'startup',
+		data: JSON.stringify({
+			version: version,
+			instance_id: instanceId,
+			node_version: process.version,
+			platform: process.platform,
+			arch: process.arch,
+			timestamp: new Date().toISOString()
+		})
+	};
+
+	await txn
+		.insertInto('system_info')
+		.values(startupInfo)
 		.execute();
 }

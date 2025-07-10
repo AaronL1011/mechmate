@@ -10,7 +10,8 @@
 	let notificationSuccess = '';
 	let settings: GlobalSettingsValues = {
 		upcoming_task_range_days: 90,
-		preferred_measurement_system: 'metric'
+		preferred_measurement_system: 'metric',
+    assistant_tone: 'professional'
 	};
 
 	// Notification settings
@@ -433,7 +434,8 @@
 	function resetToDefaults() {
 		formValues = {
 			upcoming_task_range_days: 90,
-			preferred_measurement_system: 'metric'
+			preferred_measurement_system: 'metric',
+      assistant_tone: 'professional'
 		};
 	}
 
@@ -554,6 +556,33 @@
 							</p>
 						</div>
 					</div>
+          <!-- Preferred Measurement System Setting -->
+					<div class="space-y-2">
+						<label
+							for="upcoming_task_range_days"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
+							Assistant Tone
+						</label>
+						<div class="space-y-1">
+							<select
+								id="assistant_tone"
+								name="assistant_tone"
+								bind:value={formValues.assistant_tone}
+								required
+								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+							>
+								<option value="professional">Professional</option>
+								<option value="friendly">Friendly</option>
+								<option value="blunt">Blunt</option>
+								<option value="educational">Educational</option>
+								<option value="cheeky">Cheeky</option>
+							</select>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Preferred conversational style of the mechmate assistant. Currently set to {settings.assistant_tone}.
+							</p>
+						</div>
+					</div>
 
 					<!-- Form Actions -->
 					<div
@@ -573,7 +602,7 @@
 									on:click={resetForm}
 									class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
 								>
-									Cancel Changes
+									Cancel
 								</button>
 							{/if}
 						</div>
@@ -589,7 +618,7 @@
 									Saving...
 								</div>
 							{:else}
-								Save Settings
+								Save
 							{/if}
 						</button>
 					</div>
@@ -890,25 +919,6 @@
 						{/if}
 					</div>
 				{/if}
-			</div>
-
-			<!-- Settings Information -->
-			<div
-				class="mt-8 rounded-lg border border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-900/20"
-			>
-				<h3 class="mb-2 text-lg font-medium text-blue-900 dark:text-blue-100">About Settings</h3>
-				<div class="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-					<p>
-						<strong>Upcoming Task Range:</strong> Controls how far into the future the application looks
-						when displaying upcoming tasks on the dashboard and in task lists. This affects both the
-						"Upcoming" counter on the dashboard and the tasks shown in your upcoming tasks view.
-					</p>
-					<p>
-						<strong>Notifications:</strong> Push notifications help you stay on top of maintenance tasks.
-						Enable notifications and add your devices to receive reminders before tasks are due. You
-						can customize when notifications are sent using the threshold settings.
-					</p>
-				</div>
 			</div>
 		{/if}
 	</main>

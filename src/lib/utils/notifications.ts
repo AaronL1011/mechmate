@@ -2,6 +2,7 @@ import webpush from 'web-push';
 import type { Database, Task, Equipment, TaskType, NotificationSettingsDisplay, NotificationSubscription } from '../types/db.js';
 import type { Kysely } from 'kysely';
 import { notificationSubscriptionRepository, notificationSettingsRepository, notificationLogRepository, taskRepository, equipmentRepository, taskTypeRepository } from '../repositories.js';
+import { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } from '$env/static/private';
 
 // VAPID key management
 let vapidKeys: { publicKey: string; privateKey: string } | null = null;
@@ -23,6 +24,14 @@ export function generateVapidKeys(): { publicKey: string; privateKey: string } {
 }
 
 export function getVapidKeys(): { publicKey: string; privateKey: string } {
+	// Use environment variables if available, otherwise generate new ones
+	if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+		return {
+			publicKey: VAPID_PUBLIC_KEY,
+			privateKey: VAPID_PRIVATE_KEY
+		};
+	}
+
 	if (!vapidKeys) {
 		return generateVapidKeys();
 	}
@@ -31,12 +40,17 @@ export function getVapidKeys(): { publicKey: string; privateKey: string } {
 
 export function initializeWebPush(): void {
 	const keys = getVapidKeys();
+	const subject = VAPID_SUBJECT || 'mailto:noreply@mechmate.local';
 	
 	webpush.setVapidDetails(
-		'mailto:admin@mechmate.local', // Subject email
+		subject,
 		keys.publicKey,
 		keys.privateKey
 	);
+}
+
+export function isNotificationConfigured(): boolean {
+	return Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT);
 }
 
 // Notification threshold types
@@ -75,10 +89,21 @@ export class NotificationService {
 
 	constructor(db: Kysely<Database>) {
 		this.db = db;
-		initializeWebPush();
+		
+		// Only initialize web push if properly configured
+		if (isNotificationConfigured()) {
+			initializeWebPush();
+		} else {
+			console.warn('Push notifications not configured. VAPID keys missing from environment variables.');
+		}
 	}
 
 	async sendNotification(subscription: NotificationSubscription, payload: NotificationData): Promise<boolean> {
+		if (!isNotificationConfigured()) {
+			console.warn('Cannot send notification: VAPID keys not configured');
+			return false;
+		}
+
 		try {
 			const pushPayload = JSON.stringify({
 				title: payload.title,
@@ -142,6 +167,11 @@ export class NotificationService {
 
 	async checkAndSendDueNotifications(): Promise<void> {
 		console.log('Checking for due notifications...');
+
+		if (!isNotificationConfigured()) {
+			console.log('Notifications not configured, skipping check');
+			return;
+		}
 
 		const settings = await notificationSettingsRepository.get(this.db);
 		if (!settings || !settings.enabled) {
