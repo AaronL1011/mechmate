@@ -221,13 +221,9 @@ docker-compose restart mechmate
 docker-compose logs -f mechmate
 ```
 
-## Advanced Configuration
-
-See `DEPLOYMENT.md` for detailed configuration options and `.env.example` for all available settings.
-
 ## License
 
-MIT License - see LICENSE file for details.
+GPL-3.0 License - see LICENSE file for details.
 
 ## Support
 
