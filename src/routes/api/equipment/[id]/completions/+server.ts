@@ -5,7 +5,7 @@ import { maintenanceLogRepository } from '$lib/repositories.js';
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const equipmentId = parseInt(params.id);
-		
+
 		if (isNaN(equipmentId)) {
 			return json({ error: 'Invalid equipment ID' }, { status: 400 });
 		}
@@ -24,4 +24,4 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		console.error('Error fetching equipment completions:', error);
 		return json({ error: 'Failed to fetch maintenance history' }, { status: 500 });
 	}
-}; 
+};

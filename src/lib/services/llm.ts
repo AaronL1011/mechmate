@@ -1,4 +1,10 @@
-import { OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, OPENAI_TEMPERATURE, OPENAI_MAX_TOKENS } from '$env/static/private';
+import {
+	OPENAI_API_KEY,
+	OPENAI_BASE_URL,
+	OPENAI_MODEL,
+	OPENAI_TEMPERATURE,
+	OPENAI_MAX_TOKENS
+} from '$env/static/private';
 
 export interface LLMMessage {
 	role: 'system' | 'user' | 'assistant' | 'function' | 'tool';
@@ -83,7 +89,7 @@ export class LLMService {
 
 	async completions(request: Omit<LLMRequest, 'model'>): Promise<LLMResponse> {
 		const url = `${this.baseUrl}/chat/completions`;
-		
+
 		const body: LLMRequest = {
 			model: this.model,
 			temperature: this.temperature,
@@ -116,12 +122,14 @@ export class LLMService {
 			return data as LLMResponse;
 		} catch (error) {
 			console.error('LLM API request failed:', error);
-			throw new Error(`Failed to call LLM API: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			throw new Error(
+				`Failed to call LLM API: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
 		}
 	}
 
 	async processPrompt(
-		prompt: string, 
+		prompt: string,
 		functions: LLMFunction[] = [],
 		systemPrompt?: string,
 		context?: Record<string, any>
@@ -157,7 +165,7 @@ export class LLMService {
 		// Add functions/tools if provided
 		if (functions.length > 0) {
 			// Use tools format for OpenAI API compatibility
-			request.tools = functions.map(func => ({
+			request.tools = functions.map((func) => ({
 				type: 'function',
 				function: func
 			}));

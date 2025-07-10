@@ -1,14 +1,11 @@
 <script lang="ts">
-	import type { Equipment, TaskType, EquipmentType } from '$lib/types/db.js';
 	import ActionConfirmation from './ActionConfirmation.svelte';
 	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
 
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
-		equipment: Equipment[];
-		taskTypes: TaskType[];
-		equipmentTypes: EquipmentType[];
 		onSuccess?: () => void;
 	}
 
@@ -34,7 +31,7 @@
 
 	function renderMarkdown(text: string): string {
 		if (!text) return '';
-		return marked(text) as string;
+		return DOMPurify.sanitize(marked(text) as string);
 	}
 
 	$effect(() => {

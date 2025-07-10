@@ -77,8 +77,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			memory: {
 				heap_used_mb: Math.round(heapUsedMB * 100) / 100,
 				heap_total_mb: Math.round(heapTotalMB * 100) / 100,
-				rss_mb: Math.round(memoryUsage.rss / 1024 / 1024 * 100) / 100,
-				external_mb: Math.round(memoryUsage.external / 1024 / 1024 * 100) / 100,
+				rss_mb: Math.round((memoryUsage.rss / 1024 / 1024) * 100) / 100,
+				external_mb: Math.round((memoryUsage.external / 1024 / 1024) * 100) / 100,
 				usage_percent: Math.round(usagePercent * 100) / 100
 			},
 			database: {
@@ -106,7 +106,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				'X-Response-Time': `${responseTime.toFixed(2)}ms`
 			}
 		});
-
 	} catch (err) {
 		console.error('Failed to gather system metrics:', err);
 		throw error(500, 'Failed to gather system metrics');

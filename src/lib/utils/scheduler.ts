@@ -26,22 +26,26 @@ export class NotificationScheduler {
 		}
 
 		const config = getConfig();
-		
+
 		// Schedule notifications (every hour at minute 0)
 		const notificationSchedule = process.env.NOTIFICATION_CRON_SCHEDULE || '0 * * * *';
 		console.log(`📬 Starting notification scheduler with schedule: ${notificationSchedule}`);
 
-		this.notificationCronJob = cron.schedule(notificationSchedule, async () => {
-			console.log('Running scheduled notification check...');
-			try {
-				await this.notificationService.checkAndSendDueNotifications();
-			} catch (error) {
-				console.error('Error in scheduled notification check:', error);
+		this.notificationCronJob = cron.schedule(
+			notificationSchedule,
+			async () => {
+				console.log('Running scheduled notification check...');
+				try {
+					await this.notificationService.checkAndSendDueNotifications();
+				} catch (error) {
+					console.error('Error in scheduled notification check:', error);
+				}
+			},
+			{
+				scheduled: true,
+				timezone: process.env.TZ || 'UTC'
 			}
-		}, {
-			scheduled: true,
-			timezone: process.env.TZ || 'UTC'
-		});
+		);
 
 		// Schedule automatic backups if enabled
 		if (config.AUTO_BACKUP_ENABLED) {
@@ -49,22 +53,26 @@ export class NotificationScheduler {
 			const backupSchedule = `0 */${backupIntervalHours} * * *`; // Every N hours
 			console.log(`⏳ Starting backup scheduler with schedule: ${backupSchedule}`);
 
-			this.backupCronJob = cron.schedule(backupSchedule, async () => {
-				console.log('Running scheduled automatic backup...');
-				try {
-					const result = await backupManager.createBackup('automatic');
-					if (result.success) {
-						console.log(`Automatic backup created: ${result.filename} (${result.size} bytes)`);
-					} else {
-						console.error('Automatic backup failed:', result.error);
+			this.backupCronJob = cron.schedule(
+				backupSchedule,
+				async () => {
+					console.log('Running scheduled automatic backup...');
+					try {
+						const result = await backupManager.createBackup('automatic');
+						if (result.success) {
+							console.log(`Automatic backup created: ${result.filename} (${result.size} bytes)`);
+						} else {
+							console.error('Automatic backup failed:', result.error);
+						}
+					} catch (error) {
+						console.error('Error in scheduled backup:', error);
 					}
-				} catch (error) {
-					console.error('Error in scheduled backup:', error);
+				},
+				{
+					scheduled: true,
+					timezone: process.env.TZ || 'UTC'
 				}
-			}, {
-				scheduled: true,
-				timezone: process.env.TZ || 'UTC'
-			});
+			);
 		}
 
 		this.isRunning = true;

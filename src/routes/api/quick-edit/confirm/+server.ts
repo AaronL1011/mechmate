@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { 
-	equipmentRepository, 
-	taskRepository, 
-	maintenanceLogRepository 
+import {
+	equipmentRepository,
+	taskRepository,
+	maintenanceLogRepository
 } from '$lib/repositories.js';
 import { _pendingActions } from '../+server.js';
 import type { Kysely } from 'kysely';
@@ -25,25 +25,32 @@ interface ConfirmResponse {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	console.log('Mech assist confirm request');
-	
+
 	try {
-		const { action_id, confirmed, updated_data, user_feedback }: ConfirmRequest = await request.json();
+		const { action_id, confirmed, updated_data, user_feedback }: ConfirmRequest =
+			await request.json();
 
 		if (!action_id) {
-			return json({ 
-				success: false, 
-				error: 'Action ID is required' 
-			}, { status: 400 });
+			return json(
+				{
+					success: false,
+					error: 'Action ID is required'
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Get the pending action
 		const action = _pendingActions.get(action_id);
-		
+
 		if (!action) {
-			return json({ 
-				success: false, 
-				error: 'Action not found or expired' 
-			}, { status: 404 });
+			return json(
+				{
+					success: false,
+					error: 'Action not found or expired'
+				},
+				{ status: 404 }
+			);
 		}
 
 		// Remove from pending actions
@@ -71,10 +78,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Execute the confirmed action
 		let result;
-		
+
 		try {
 			console.log('Executing action:', action.type, action.entity);
-			
+
 			switch (action.entity) {
 				case 'equipment':
 					result = await executeEquipmentAction(locals.db, action);
@@ -96,22 +103,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				success: true,
 				result,
 				message: successMessage
-			});
-
+			} as ConfirmResponse);
 		} catch (error) {
-			console.error('Action execution failed:', error instanceof Error ? error.message : 'Unknown error');
-			return json({ 
-				success: false, 
-				error: error instanceof Error ? error.message : 'Action execution failed' 
-			}, { status: 500 });
+			console.error(
+				'Action execution failed:',
+				error instanceof Error ? error.message : 'Unknown error'
+			);
+			return json(
+				{
+					success: false,
+					error: error instanceof Error ? error.message : 'Action execution failed'
+				},
+				{ status: 500 }
+			);
 		}
-
 	} catch (error) {
 		console.error('Confirm API error:', error instanceof Error ? error.message : 'Unknown error');
-		return json({ 
-			success: false, 
-			error: error instanceof Error ? error.message : 'Unknown error occurred' 
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error occurred'
+			},
+			{ status: 500 }
+		);
 	}
 };
 
@@ -173,6 +187,7 @@ async function completeTask(db: Kysely<Database>, data: any) {
 	// Create maintenance log
 	const logData = {
 		task_id: data.task_id,
+		user_id: task.user_id,
 		equipment_id: task.equipment_id,
 		completed_date: data.completed_date,
 		completed_usage_value: data.completed_usage_value,
@@ -224,7 +239,7 @@ async function completeTask(db: Kysely<Database>, data: any) {
 
 function getSuccessMessage(action: any): string {
 	const entity = action.entity.replace('_', ' ');
-	
+
 	switch (action.type) {
 		case 'create':
 			return `${entity} created successfully`;

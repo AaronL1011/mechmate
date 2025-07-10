@@ -1,8 +1,8 @@
-import type { Equipment, TaskCompletion } from "$lib/types/db";
-import { formatCurrency, formatDate } from "./format";
+import type { Equipment, TaskCompletion } from '$lib/types/db';
+import { formatCurrency, formatDate } from './format';
 
 function generateTableRow(completion: TaskCompletion, equipment: Equipment): string {
-    return (`
+	return `
                   <tr>
                     <td>${formatDate(completion.completed_date)}</td>
                     <td>${completion.task_title || 'N/A'}</td>
@@ -12,10 +12,14 @@ function generateTableRow(completion: TaskCompletion, equipment: Equipment): str
                     <td>${completion.service_provider || 'N/A'}</td>
                     <td>${completion.parts_used ? completion.parts_used.join(', ') : 'N/A'}</td>
                   </tr>
-                `);
+                `;
 }
-export const createReportHTML = (equipment: Equipment, completions: TaskCompletion[], equipmentTypeName?: string) => {
-    return `
+export const createReportHTML = (
+	equipment: Equipment,
+	completions: TaskCompletion[],
+	equipmentTypeName?: string
+) => {
+	return `
       <!DOCTYPE html>
       <html>
         <head>
@@ -47,7 +51,9 @@ export const createReportHTML = (equipment: Equipment, completions: TaskCompleti
             <p><strong>Current Usage:</strong> ${equipment.current_usage_value} ${equipment.usage_unit}</p>
           </div>
           
-          ${completions.length > 0 ? (`
+          ${
+						completions.length > 0
+							? `
             <table>
               <thead>
                 <tr>
@@ -61,13 +67,15 @@ export const createReportHTML = (equipment: Equipment, completions: TaskCompleti
                 </tr>
               </thead>
               <tbody>
-                ${completions.map(completion => generateTableRow(completion, equipment)).join('')}
+                ${completions.map((completion) => generateTableRow(completion, equipment)).join('')}
               </tbody>
-            </table>`) : (`
+            </table>`
+							: `
             <div class="no-data">
               <p>No maintenance history found for this equipment.</p>
             </div>
-          `)}
+          `
+					}
           
           <div class="no-print" style="margin-top: 30px; text-align: center;">
             <button onclick="window.print()">Print Report</button>

@@ -2,7 +2,7 @@ import type { ColumnType, Generated, Insertable, Selectable, Updateable } from '
 
 export interface Database {
 	equipment: EquipmentTable;
-	equipment_types: EquipmentTypesTable
+	equipment_types: EquipmentTypesTable;
 	task_types: TaskTypesTable;
 	tasks: TasksTable;
 	maintenance_logs: MaintenanceLogsTable;
@@ -312,7 +312,7 @@ export type GlobalSettingUpdate = Updateable<GlobalSettingsTable>;
 export interface GlobalSettingsValues {
 	upcoming_task_range_days: number;
 	preferred_measurement_system: 'metric' | 'imperial';
-	assistant_tone: 'professional' | 'friendly' | 'blunt' | 'educational' | 'cheeky'
+	assistant_tone: 'professional' | 'friendly' | 'blunt' | 'educational' | 'cheeky';
 }
 
 export interface UpdateGlobalSettingRequest {

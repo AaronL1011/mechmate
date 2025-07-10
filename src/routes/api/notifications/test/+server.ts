@@ -7,10 +7,10 @@ export const POST: RequestHandler = async ({ locals }) => {
 		const notificationService = new NotificationService(locals.db);
 		const sentCount = await notificationService.sendTestNotification();
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			message: `Test notification sent to ${sentCount} device(s)`,
-			sentCount 
+			sentCount
 		});
 	} catch (error) {
 		console.error('Error sending test notification:', error);

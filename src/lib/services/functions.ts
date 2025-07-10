@@ -1,9 +1,9 @@
 import type { LLMFunction } from './llm.js';
 import type { Kysely } from 'kysely';
 import type { Database } from '../types/db.js';
-import { 
-	equipmentRepository, 
-	taskRepository, 
+import {
+	equipmentRepository,
+	taskRepository,
 	maintenanceLogRepository,
 	equipmentTypeRepository,
 	taskTypeRepository
@@ -455,7 +455,7 @@ export class FunctionExecutor {
 				case 'get_task_types':
 					return await this.getTaskTypes();
 				case 'get_tasks':
-					return await this.getTasks(args);
+					return await this.getTasks();
 				case 'get_upcoming_tasks':
 					return await this.getUpcomingTasks(args.days);
 				case 'create_task':
@@ -467,7 +467,7 @@ export class FunctionExecutor {
 
 				// Maintenance log functions
 				case 'get_maintenance_logs':
-					return await this.getMaintenanceLogs(args);
+					return await this.getMaintenanceLogs();
 				case 'complete_task':
 					return await this.completeTask(args);
 				case 'create_maintenance_log':
@@ -509,10 +509,11 @@ export class FunctionExecutor {
 
 	private async searchEquipment(query: string): Promise<ActionResult> {
 		const equipment = await equipmentRepository.getAll(this.context.db);
-		const filtered = equipment.filter(eq => 
-			eq.name.toLowerCase().includes(query.toLowerCase()) ||
-			eq.make?.toLowerCase().includes(query.toLowerCase()) ||
-			eq.model?.toLowerCase().includes(query.toLowerCase())
+		const filtered = equipment.filter(
+			(eq) =>
+				eq.name.toLowerCase().includes(query.toLowerCase()) ||
+				eq.make?.toLowerCase().includes(query.toLowerCase()) ||
+				eq.model?.toLowerCase().includes(query.toLowerCase())
 		);
 		return {
 			type: 'query',
@@ -571,7 +572,7 @@ export class FunctionExecutor {
 		};
 	}
 
-	private async getTasks(filters: any): Promise<ActionResult> {
+	private async getTasks(): Promise<ActionResult> {
 		const tasks = await taskRepository.getAll(this.context.db);
 		// Apply filters if needed
 		return {
@@ -595,7 +596,7 @@ export class FunctionExecutor {
 	private async createTask(data: any): Promise<ActionResult> {
 		const equipment = await equipmentRepository.getById(this.context.db, data.equipment_id);
 		const taskType = await taskTypeRepository.getById(this.context.db, data.task_type_id);
-		
+
 		if (!equipment) throw new Error(`Equipment with ID ${data.equipment_id} not found`);
 		if (!taskType) throw new Error(`Task type with ID ${data.task_type_id} not found`);
 
@@ -637,7 +638,7 @@ export class FunctionExecutor {
 	}
 
 	// Maintenance log function implementations
-	private async getMaintenanceLogs(filters: any): Promise<ActionResult> {
+	private async getMaintenanceLogs(): Promise<ActionResult> {
 		const logs = await maintenanceLogRepository.getAll(this.context.db);
 		return {
 			type: 'query',
@@ -664,7 +665,7 @@ export class FunctionExecutor {
 	private async createMaintenanceLog(data: any): Promise<ActionResult> {
 		const task = await taskRepository.getById(this.context.db, data.task_id);
 		const equipment = await equipmentRepository.getById(this.context.db, data.equipment_id);
-		
+
 		if (!task) throw new Error(`Task with ID ${data.task_id} not found`);
 		if (!equipment) throw new Error(`Equipment with ID ${data.equipment_id} not found`);
 

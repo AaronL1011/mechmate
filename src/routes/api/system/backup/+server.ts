@@ -24,9 +24,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		const type = body.type === 'automatic' ? 'automatic' : 'manual';
-		
+
 		const result = await backupManager.createBackup(type);
-		
+
 		if (result.success) {
 			return json({
 				success: true,
@@ -51,13 +51,13 @@ export const DELETE: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		const { filename } = body;
-		
+
 		if (!filename) {
 			throw error(400, 'Backup filename is required');
 		}
-		
+
 		const result = backupManager.deleteBackup(filename);
-		
+
 		if (result.success) {
 			return json({
 				success: true,

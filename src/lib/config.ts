@@ -8,50 +8,50 @@ const ConfigSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
 	PORT: z.coerce.number().min(1).max(65535).default(3000),
 	HOST: z.string().default('0.0.0.0'),
-	
+
 	// Database settings
 	DATABASE_DIR: z.string().default('data'),
 	DATABASE_BACKUP_DIR: z.string().default('data/backups'),
 	DATABASE_BACKUP_RETENTION_DAYS: z.coerce.number().min(1).default(30),
-	
+
 	// Application metadata
 	MECHMATE_VERSION: z.string().default('0.0.1'),
 	INSTANCE_NAME: z.string().default('Mechmate Self-Hosted'),
-	
+
 	// Security settings
 	RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
 	RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutes
 	RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
-	
+
 	// LLM/AI settings (optional)
 	OPENAI_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().url().optional(),
 	OPENAI_MODEL: z.string().default('gpt-4'),
 	LLM_TIMEOUT_MS: z.coerce.number().default(30000),
-	
+
 	// Push notification settings (optional)
 	VAPID_PRIVATE_KEY: z.string().optional(),
 	VAPID_PUBLIC_KEY: z.string().optional(),
 	VAPID_SUBJECT: z.string().optional(),
-	
+
 	// Storage settings
 	UPLOAD_MAX_SIZE_MB: z.coerce.number().min(1).max(100).default(10),
 	UPLOAD_DIR: z.string().default('data/uploads'),
-	
+
 	// Monitoring and logging
 	LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 	HEALTH_CHECK_ENABLED: z.coerce.boolean().default(true),
 	METRICS_ENABLED: z.coerce.boolean().default(false),
-	
+
 	// Backup settings
 	AUTO_BACKUP_ENABLED: z.coerce.boolean().default(true),
 	AUTO_BACKUP_INTERVAL_HOURS: z.coerce.number().min(1).default(24),
 	AUTO_BACKUP_MAX_FILES: z.coerce.number().min(1).default(7),
-	
+
 	// Development settings
 	ENABLE_DEBUG_LOGS: z.coerce.boolean().default(false),
 	CORS_ENABLED: z.coerce.boolean().default(false),
-	CORS_ORIGIN: z.string().optional(),
+	CORS_ORIGIN: z.string().optional()
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -60,19 +60,19 @@ export type Config = z.infer<typeof ConfigSchema>;
 function loadConfig(): Config {
 	try {
 		const config = ConfigSchema.parse(process.env);
-		
+
 		// Additional validation
 		if (config.NODE_ENV === 'production') {
 			// Warn about missing optional production settings
 			if (!config.OPENAI_API_KEY) {
 				console.warn('⚠️  OPENAI_API_KEY not set - AI assistant will be disabled');
 			}
-			
+
 			if (!config.VAPID_PRIVATE_KEY || !config.VAPID_PUBLIC_KEY) {
 				console.warn('⚠️  VAPID keys not set - push notifications will be disabled');
 			}
 		}
-		
+
 		return config;
 	} catch (error: unknown) {
 		if (error instanceof z.ZodError) {
@@ -117,11 +117,11 @@ export function areNotificationsEnabled(): boolean {
 // Configuration validation for specific features
 export function validateLLMConfig(): { enabled: boolean; error?: string } {
 	const config = getConfig();
-	
+
 	if (!config.OPENAI_API_KEY) {
 		return { enabled: false, error: 'OPENAI_API_KEY not configured' };
 	}
-	
+
 	if (config.OPENAI_BASE_URL) {
 		try {
 			new URL(config.OPENAI_BASE_URL);
@@ -129,25 +129,25 @@ export function validateLLMConfig(): { enabled: boolean; error?: string } {
 			return { enabled: false, error: 'OPENAI_BASE_URL is not a valid URL' };
 		}
 	}
-	
+
 	return { enabled: true };
 }
 
 export function validateNotificationConfig(): { enabled: boolean; error?: string } {
 	const config = getConfig();
-	
+
 	if (!config.VAPID_PRIVATE_KEY) {
 		return { enabled: false, error: 'VAPID_PRIVATE_KEY not configured' };
 	}
-	
+
 	if (!config.VAPID_PUBLIC_KEY) {
 		return { enabled: false, error: 'VAPID_PUBLIC_KEY not configured' };
 	}
-	
+
 	if (!config.VAPID_SUBJECT) {
 		return { enabled: false, error: 'VAPID_SUBJECT not configured' };
 	}
-	
+
 	return { enabled: true };
 }
 

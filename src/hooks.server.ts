@@ -71,7 +71,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Process request
 	const response = await resolve(event);
-	
+
 	// Apply security headers and CORS
 	return addSecurityHeaders(applyCORS(event, response));
-}; 
+};

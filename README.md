@@ -7,7 +7,7 @@ A personal maintenance management system for tracking equipment, scheduling main
 ## Features
 
 - **Equipment Management** - Track vehicles, appliances, tools, devices, and mechanical equipment
-- **Maintenance Scheduling** - Time-based or usage-based maintenance intervals  
+- **Maintenance Scheduling** - Time-based or usage-based maintenance intervals
 - **AI Assistant** - Natural language equipment and task management
 - **Maintenance History** - Complete audit trail with cost tracking
 - **Push Notifications** - Maintenance reminders (optional)
@@ -64,12 +64,14 @@ RATE_LIMIT_MAX_REQUESTS=100
 Mechmate supports any OpenAI-compatible API endpoint:
 
 **OpenAI Direct:**
+
 ```bash
 OPENAI_API_KEY=your_openai_key_here
 OPENAI_MODEL=gpt-4o-mini
 ```
 
 **OpenRouter (Multiple Providers):**
+
 ```bash
 OPENAI_API_KEY=your_openrouter_key_here
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
@@ -77,6 +79,7 @@ OPENAI_MODEL=openai/gpt-4o-mini
 ```
 
 **Local Models (Ollama/LM Studio):**
+
 ```bash
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_MODEL=llama3.1:8b
@@ -86,7 +89,7 @@ OPENAI_MODEL=llama3.1:8b
 
 1. Generate VAPID keys: `npx web-push generate-vapid-keys`
 2. Add keys to `.env`
-3. Restart: `docker-compose restart mechmate` 
+3. Restart: `docker-compose restart mechmate`
 
 ## Management
 
@@ -146,7 +149,7 @@ docker run --rm -v mechmate_mechmate_data:/data -v $(pwd):/backup ubuntu \
 server {
     listen 80;
     server_name mechmate.yourdomain.com;
-    
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
@@ -165,10 +168,10 @@ Add labels to `docker-compose.yml`:
 services:
   mechmate:
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mechmate.rule=Host(`mechmate.yourdomain.com`)"
-      - "traefik.http.routers.mechmate.entrypoints=websecure"
-      - "traefik.http.routers.mechmate.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.mechmate.rule=Host(`mechmate.yourdomain.com`)'
+      - 'traefik.http.routers.mechmate.entrypoints=websecure'
+      - 'traefik.http.routers.mechmate.tls.certresolver=letsencrypt'
 ```
 
 ## Development
@@ -185,6 +188,7 @@ Available at `http://localhost:5173`
 ### Common Issues
 
 **Port already in use:**
+
 ```bash
 # Change port in .env
 PORT=3001
@@ -194,6 +198,7 @@ sudo netstat -tulpn | grep 3000
 ```
 
 **Database issues:**
+
 ```bash
 # Check database integrity
 docker-compose exec mechmate sqlite3 /app/data/mechmate.db "PRAGMA integrity_check;"

@@ -32,14 +32,7 @@ async function processConversation(
 	conversationHistory: LLMMessage[],
 	executor: FunctionExecutor,
 	maxIterations: number = 3
-): Promise<{
-	success: boolean;
-	action?: ActionResult;
-	message?: string;
-	conversation_history: LLMMessage[];
-	requires_more_info?: boolean;
-	error?: string;
-}> {
+): Promise<QuickEditResponse> {
 	const messages: LLMMessage[] = [];
 
 	// Add system prompt
@@ -68,14 +61,14 @@ async function processConversation(
 	});
 
 	let iteration = 0;
-	
+
 	while (iteration < maxIterations) {
 		iteration++;
 
 		// Call LLM
 		const llmResponse = await llmService.completions({
 			messages,
-			tools: allFunctions.map(func => ({
+			tools: allFunctions.map((func) => ({
 				type: 'function',
 				function: func
 			})),
@@ -100,10 +93,10 @@ async function processConversation(
 			for (const toolCall of choice.message.tool_calls) {
 				const functionName = toolCall.function.name;
 				const functionArgs = JSON.parse(toolCall.function.arguments);
-				
+
 				// Execute the function
 				const actionResult = await executor.executeFunction(functionName, functionArgs);
-				
+
 				// If this is a query function, add result to conversation and continue
 				if (isQueryFunction(functionName)) {
 					messages.push({
@@ -113,7 +106,7 @@ async function processConversation(
 					});
 					continue; // Continue to next iteration
 				}
-				
+
 				// If this is an action function, return the result
 				if (actionResult.error) {
 					return {
@@ -122,7 +115,7 @@ async function processConversation(
 						conversation_history: messages
 					};
 				}
-				
+
 				// Return the action result
 				return {
 					success: true,
@@ -130,7 +123,7 @@ async function processConversation(
 					conversation_history: messages
 				};
 			}
-			
+
 			// If we get here, all tool calls were queries - continue to next iteration
 			continue;
 		}
@@ -146,7 +139,8 @@ async function processConversation(
 	// If we've exhausted iterations, return what we have
 	return {
 		success: true,
-		message: 'I need more information to complete this request. Please provide more details or try a more specific request.',
+		message:
+			'I need more information to complete this request. Please provide more details or try a more specific request.',
 		conversation_history: messages,
 		requires_more_info: true
 	};
@@ -239,35 +233,52 @@ Always begin with query functions to gather context. Then, based on that data, e
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	console.log('Mech assist request started');
-	
+
 	try {
 		if (!llmService.isConfigured()) {
 			console.error('LLM service not configured');
-			return json({ 
-				success: false, 
-				error: 'LLM service not properly configured. Please check environment variables.' 
-			}, { status: 500 });
+			return json(
+				{
+					success: false,
+					error: 'LLM service not properly configured. Please check environment variables.'
+				},
+				{ status: 500 }
+			);
 		}
 
 		const { prompt, context, conversation_history }: QuickEditRequest = await request.json();
-		console.log('Processing prompt:', prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''));
+		console.log(
+			'Processing prompt:',
+			prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '')
+		);
 
 		if (!prompt?.trim()) {
-			return json({ 
-				success: false, 
-				error: 'Prompt is required' 
-			}, { status: 400 });
+			return json(
+				{
+					success: false,
+					error: 'Prompt is required'
+				},
+				{ status: 400 }
+			);
 		}
 
 		const executor = new FunctionExecutor({ db: locals.db });
 		const contextData: Record<string, any> = {};
-		
+
 		// Load reference data
 		try {
 			const equipmentTypes = await executor.executeFunction('get_equipment_types', {});
 			const taskTypes = await executor.executeFunction('get_task_types', {});
-			const unitSetting = await globalSettingsRepository.getTypedValue(locals.db, 'preferred_measurement_system', 'metric')
-			const toneSetting = await globalSettingsRepository.getTypedValue(locals.db, 'assistant_tone', 'professional') as GlobalSettingsValues['assistant_tone'];
+			const unitSetting = await globalSettingsRepository.getTypedValue(
+				locals.db,
+				'preferred_measurement_system',
+				'metric'
+			);
+			const toneSetting = (await globalSettingsRepository.getTypedValue(
+				locals.db,
+				'assistant_tone',
+				'professional'
+			)) as GlobalSettingsValues['assistant_tone'];
 
 			contextData.preferred_measurement_system = unitSetting;
 			contextData.assistant_tone = getAssistantToneContext(toneSetting);
@@ -298,11 +309,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Handle errors
 		if (!result.success) {
 			console.error('Mech assist failed:', result.error);
-			return json({ 
-				success: false, 
-				error: result.error,
-				conversation_history: result.conversation_history
-			}, { status: 400 });
+			return json(
+				{
+					success: false,
+					error: result.error,
+					conversation_history: result.conversation_history
+				},
+				{ status: 400 }
+			);
 		}
 
 		// If we have an action that requires confirmation
@@ -327,7 +341,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		console.log('Mech assist completed:', result.action ? `${result.action.type} ${result.action.entity}` : 'text response');
+		console.log(
+			'Mech assist completed:',
+			result.action ? `${result.action.type} ${result.action.entity}` : 'text response'
+		);
 		return json({
 			success: true,
 			action: result.action,
@@ -335,31 +352,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			conversation_history: result.conversation_history,
 			requires_more_info: result.requires_more_info
 		});
-
 	} catch (error) {
-		console.error('Mech assist API error:', error instanceof Error ? error.message : 'Unknown error');
-		return json({ 
-			success: false, 
-			error: error instanceof Error ? error.message : 'Unknown error occurred' 
-		}, { status: 500 });
+		console.error(
+			'Mech assist API error:',
+			error instanceof Error ? error.message : 'Unknown error'
+		);
+		return json(
+			{
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error occurred'
+			},
+			{ status: 500 }
+		);
 	}
 };
 
 const getAssistantToneContext = (tone: GlobalSettingsValues['assistant_tone']) => {
 	switch (tone) {
 		case 'friendly':
-			return "Give small affirmations and emotional support for those new to maintenance or trying to stay on top of things."
+			return 'Give small affirmations and emotional support for those new to maintenance or trying to stay on top of things.';
 		case 'blunt':
-			return "Be minimal and curt, never more than a few words in a response and respond bluntly. Ideal for power users or those who want zero filler."
+			return 'Be minimal and curt, never more than a few words in a response and respond bluntly. Ideal for power users or those who want zero filler.';
 		case 'educational':
-			return "Add explanations and small learning moments when relevant to promote mechanical literacy."
+			return 'Add explanations and small learning moments when relevant to promote mechanical literacy.';
 		case 'cheeky':
-			return "Respond with wit and dry humour, reminiscent of a sharp-tongued veteran mechanic."
+			return 'Respond with wit and dry humour, reminiscent of a sharp-tongued veteran mechanic.';
 		case 'professional':
 		default:
-			return "Respond clear, concise and task-focused. No fluff. Ideal for mechanics, fleet managers, or workshop staff who want efficiency."
+			return 'Respond clear, concise and task-focused. No fluff. Ideal for mechanics, fleet managers, or workshop staff who want efficiency.';
 	}
-}
+};
 
 // Export pending actions for confirmation endpoint
 export { _pendingActions };

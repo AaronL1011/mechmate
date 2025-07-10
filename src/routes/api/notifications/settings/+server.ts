@@ -1,6 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { notificationSettingsRepository, notificationSubscriptionRepository } from '$lib/repositories.js';
+import {
+	notificationSettingsRepository,
+	notificationSubscriptionRepository
+} from '$lib/repositories.js';
 import type { NotificationSettingsRequest } from '$lib/types/db.js';
 import { getVapidKeys } from '$lib/utils/notifications.js';
 
@@ -12,7 +15,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		return json({
 			settings,
-			subscriptions: subscriptions.map(sub => ({
+			subscriptions: subscriptions.map((sub) => ({
 				id: sub.id,
 				endpoint: sub.endpoint,
 				user_agent: sub.user_agent,

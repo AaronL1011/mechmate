@@ -8,13 +8,13 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		const { filename } = body;
-		
+
 		if (!filename) {
 			throw error(400, 'Backup filename is required');
 		}
-		
+
 		const result = await backupManager.restoreFromBackup(filename);
-		
+
 		if (result.success) {
 			return json({
 				success: true,

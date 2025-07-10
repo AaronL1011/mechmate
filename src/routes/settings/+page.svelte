@@ -11,7 +11,7 @@
 	let settings: GlobalSettingsValues = {
 		upcoming_task_range_days: 90,
 		preferred_measurement_system: 'metric',
-    assistant_tone: 'professional'
+		assistant_tone: 'professional'
 	};
 
 	// Notification settings
@@ -435,7 +435,7 @@
 		formValues = {
 			upcoming_task_range_days: 90,
 			preferred_measurement_system: 'metric',
-      assistant_tone: 'professional'
+			assistant_tone: 'professional'
 		};
 	}
 
@@ -524,7 +524,7 @@
 								min="1"
 								max="365"
 								required
-								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
 							/>
 							<p class="text-sm text-gray-500 dark:text-gray-400">
 								Number of days to look ahead for upcoming tasks (1-365 days). Currently set to {settings.upcoming_task_range_days}
@@ -546,7 +546,7 @@
 								name="preferred_measurement_system"
 								bind:value={formValues.preferred_measurement_system}
 								required
-								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
 							>
 								<option value="metric">Metric</option>
 								<option value="imperial">Imperial</option>
@@ -556,7 +556,7 @@
 							</p>
 						</div>
 					</div>
-          <!-- Preferred Measurement System Setting -->
+					<!-- Preferred Measurement System Setting -->
 					<div class="space-y-2">
 						<label
 							for="upcoming_task_range_days"
@@ -570,7 +570,7 @@
 								name="assistant_tone"
 								bind:value={formValues.assistant_tone}
 								required
-								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+								class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
 							>
 								<option value="professional">Professional</option>
 								<option value="friendly">Friendly</option>
@@ -592,7 +592,7 @@
 							<button
 								type="button"
 								on:click={resetToDefaults}
-								class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
+								class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
 							>
 								Reset to Defaults
 							</button>
@@ -600,7 +600,7 @@
 								<button
 									type="button"
 									on:click={resetForm}
-									class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
+									class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
 								>
 									Cancel
 								</button>
@@ -610,7 +610,7 @@
 						<button
 							type="submit"
 							disabled={appLoading || !hasChanges}
-							class="rounded-md border border-transparent bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800"
+							class="rounded-md border border-transparent bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800"
 						>
 							{#if appLoading}
 								<div class="flex items-center">
@@ -667,7 +667,7 @@
 								class="peer sr-only"
 							/>
 							<div
-								class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-600 dark:peer-focus:ring-blue-800"
+								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white dark:border-gray-600 dark:bg-gray-600 dark:peer-focus:ring-blue-800"
 							></div>
 						</label>
 					</div>
@@ -687,7 +687,7 @@
 									</p>
 								</div>
 								<button
-									class="whitespace-nowrap rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+									class="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
 									on:click={addCurrentDevice}
 									disabled={notificationLoading}
 								>
@@ -829,7 +829,7 @@
 
 						{#if subscriptions.length > 0}
 							<div class="space-y-2">
-								{#each subscriptions as subscription}
+								{#each subscriptions as subscription (subscription.id)}
 									<div
 										class="flex items-center justify-between rounded-md bg-gray-50 p-3 dark:bg-gray-700"
 									>

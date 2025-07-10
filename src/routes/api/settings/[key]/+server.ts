@@ -6,13 +6,13 @@ import { globalSettingsRepository } from '$lib/repositories.js';
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { key } = params;
-		
+
 		if (!key) {
 			return error(400, 'Setting key is required');
 		}
 
 		const setting = await globalSettingsRepository.getByKey(locals.db, key);
-		
+
 		if (!setting) {
 			return error(404, 'Setting not found');
 		}
@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const { key } = params;
-		
+
 		if (!key) {
 			return error(400, 'Setting key is required');
 		}
@@ -49,15 +49,23 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Validate the setting
-		const validation = await globalSettingsRepository.validateSetting(locals.db, key, String(value));
-		
+		const validation = await globalSettingsRepository.validateSetting(
+			locals.db,
+			key,
+			String(value)
+		);
+
 		if (!validation.valid) {
 			return error(400, validation.error || 'Invalid value');
 		}
 
 		// Update the setting
-		const updatedSetting = await globalSettingsRepository.updateByKey(locals.db, key, String(value));
-		
+		const updatedSetting = await globalSettingsRepository.updateByKey(
+			locals.db,
+			key,
+			String(value)
+		);
+
 		if (!updatedSetting) {
 			return error(404, 'Setting not found');
 		}

@@ -1,7 +1,21 @@
 import webpush from 'web-push';
-import type { Database, Task, Equipment, TaskType, NotificationSettingsDisplay, NotificationSubscription } from '../types/db.js';
+import type {
+	Database,
+	Task,
+	Equipment,
+	TaskType,
+	NotificationSettingsDisplay,
+	NotificationSubscription
+} from '../types/db.js';
 import type { Kysely } from 'kysely';
-import { notificationSubscriptionRepository, notificationSettingsRepository, notificationLogRepository, taskRepository, equipmentRepository, taskTypeRepository } from '../repositories.js';
+import {
+	notificationSubscriptionRepository,
+	notificationSettingsRepository,
+	notificationLogRepository,
+	taskRepository,
+	equipmentRepository,
+	taskTypeRepository
+} from '../repositories.js';
 import { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } from '$env/static/private';
 
 // VAPID key management
@@ -41,12 +55,8 @@ export function getVapidKeys(): { publicKey: string; privateKey: string } {
 export function initializeWebPush(): void {
 	const keys = getVapidKeys();
 	const subject = VAPID_SUBJECT || 'mailto:noreply@mechmate.local';
-	
-	webpush.setVapidDetails(
-		subject,
-		keys.publicKey,
-		keys.privateKey
-	);
+
+	webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
 }
 
 export function isNotificationConfigured(): boolean {
@@ -64,7 +74,7 @@ export const THRESHOLD_TYPES = {
 	OVERDUE_DAILY: 'overdue_daily'
 } as const;
 
-export type ThresholdType = typeof THRESHOLD_TYPES[keyof typeof THRESHOLD_TYPES];
+export type ThresholdType = (typeof THRESHOLD_TYPES)[keyof typeof THRESHOLD_TYPES];
 
 interface NotificationData {
 	title: string;
@@ -89,16 +99,21 @@ export class NotificationService {
 
 	constructor(db: Kysely<Database>) {
 		this.db = db;
-		
+
 		// Only initialize web push if properly configured
 		if (isNotificationConfigured()) {
 			initializeWebPush();
 		} else {
-			console.warn('Push notifications not configured. VAPID keys missing from environment variables.');
+			console.warn(
+				'Push notifications not configured. VAPID keys missing from environment variables.'
+			);
 		}
 	}
 
-	async sendNotification(subscription: NotificationSubscription, payload: NotificationData): Promise<boolean> {
+	async sendNotification(
+		subscription: NotificationSubscription,
+		payload: NotificationData
+	): Promise<boolean> {
 		if (!isNotificationConfigured()) {
 			console.warn('Cannot send notification: VAPID keys not configured');
 			return false;
@@ -129,13 +144,16 @@ export class NotificationService {
 			return true;
 		} catch (error) {
 			console.error('Failed to send notification:', error);
-			
+
 			// If subscription is invalid, remove it
-			if (error instanceof Error && (error.message.includes('410') || error.message.includes('invalid'))) {
+			if (
+				error instanceof Error &&
+				(error.message.includes('410') || error.message.includes('invalid'))
+			) {
 				await notificationSubscriptionRepository.delete(this.db, subscription.id);
 				console.log(`Removed invalid subscription: ${subscription.id}`);
 			}
-			
+
 			return false;
 		}
 	}
@@ -199,7 +217,7 @@ export class NotificationService {
 		const allTasks = await taskRepository.getAll(this.db);
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
-		
+
 		const dueTasks: DueTask[] = [];
 
 		for (const task of allTasks) {
@@ -207,20 +225,20 @@ export class NotificationService {
 
 			const equipment = await equipmentRepository.getById(this.db, task.equipment_id);
 			const taskType = await taskTypeRepository.getById(this.db, task.task_type_id);
-			
+
 			if (!equipment || !taskType) continue;
 
 			// Check each threshold type
 			const thresholds = this.getActiveThresholds(settings);
-			
+
 			for (const { type, enabled, days } of thresholds) {
 				if (!enabled) continue;
 
 				const shouldNotify = await this.shouldSendNotification(task, type, days, today);
-				
+
 				if (shouldNotify) {
 					const daysUntilDue = this.calculateDaysUntilDue(task, today);
-					
+
 					dueTasks.push({
 						task,
 						equipment,
@@ -248,7 +266,12 @@ export class NotificationService {
 		];
 	}
 
-	private async shouldSendNotification(task: Task, thresholdType: ThresholdType, thresholdDays: number, today: Date): Promise<boolean> {
+	private async shouldSendNotification(
+		task: Task,
+		thresholdType: ThresholdType,
+		thresholdDays: number,
+		today: Date
+	): Promise<boolean> {
 		if (!task.next_due_date) return false;
 
 		const dueDate = new Date(task.next_due_date);
@@ -266,14 +289,19 @@ export class NotificationService {
 
 		// Check if we've already sent this notification
 		const notificationDate = today.toISOString().split('T')[0];
-		const alreadySent = await notificationLogRepository.hasBeenSent(this.db, task.id, thresholdType, notificationDate);
+		const alreadySent = await notificationLogRepository.hasBeenSent(
+			this.db,
+			task.id,
+			thresholdType,
+			notificationDate
+		);
 
 		return !alreadySent;
 	}
 
 	private calculateDaysUntilDue(task: Task, today: Date): number {
 		if (!task.next_due_date) return Infinity;
-		
+
 		const dueDate = new Date(task.next_due_date);
 		return Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 	}
@@ -284,7 +312,7 @@ export class NotificationService {
 
 		for (const dueTask of dueTasks) {
 			const key = this.getGroupingKey(dueTask);
-			
+
 			if (!groups.has(key)) {
 				groups.set(key, []);
 			}
@@ -322,7 +350,7 @@ export class NotificationService {
 			// Batched notification for 3+ tasks
 			payload = this.createBatchedNotification(tasks);
 			await this.broadcastNotification(payload);
-			
+
 			// Log each task individually
 			for (const task of tasks) {
 				await this.logNotification(task);
@@ -332,7 +360,7 @@ export class NotificationService {
 
 	private createIndividualNotification(dueTask: DueTask): NotificationData {
 		const { equipment, taskType, daysUntilDue, isOverdue } = dueTask;
-		
+
 		let timeframe: string;
 		if (isOverdue) {
 			const daysPast = Math.abs(daysUntilDue);
@@ -356,8 +384,8 @@ export class NotificationService {
 	}
 
 	private createBatchedNotification(tasks: DueTask[]): NotificationData {
-		const overdueTasks = tasks.filter(t => t.isOverdue);
-		const upcomingTasks = tasks.filter(t => !t.isOverdue);
+		const overdueTasks = tasks.filter((t) => t.isOverdue);
+		const upcomingTasks = tasks.filter((t) => !t.isOverdue);
 
 		let title: string;
 		let body: string;
@@ -372,10 +400,10 @@ export class NotificationService {
 			title = 'Upcoming Maintenance';
 			const group = this.getGroupingKey(tasks[0]);
 			let timeframe = 'soon';
-			
+
 			if (group === 'today') timeframe = 'today';
 			else if (group === 'thisweek') timeframe = 'this week';
-			
+
 			body = `You have ${upcomingTasks.length} maintenance tasks due ${timeframe}`;
 		}
 
@@ -388,7 +416,7 @@ export class NotificationService {
 
 	private async logNotification(dueTask: DueTask): Promise<void> {
 		const today = new Date().toISOString().split('T')[0];
-		
+
 		try {
 			await notificationLogRepository.log(this.db, dueTask.task.id, dueTask.thresholdType, today);
 		} catch (error) {

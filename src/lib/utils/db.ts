@@ -57,8 +57,12 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('status', 'text', (col) => col.notNull().defaultTo('pending'))
 		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
 		.addColumn('updated_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-		.addForeignKeyConstraint('tasks_equipment_fk', ['equipment_id'], 'equipment', ['id'], (cb) => cb.onDelete('cascade'))
-		.addForeignKeyConstraint('tasks_task_type_fk', ['task_type_id'], 'task_types', ['id'], (cb) => cb.onDelete('cascade'))
+		.addForeignKeyConstraint('tasks_equipment_fk', ['equipment_id'], 'equipment', ['id'], (cb) =>
+			cb.onDelete('cascade')
+		)
+		.addForeignKeyConstraint('tasks_task_type_fk', ['task_type_id'], 'task_types', ['id'], (cb) =>
+			cb.onDelete('cascade')
+		)
 		.execute();
 
 	await db.schema
@@ -74,8 +78,16 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('parts_used', 'text') // JSON array of parts
 		.addColumn('service_provider', 'text')
 		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-		.addForeignKeyConstraint('maintenance_logs_task_fk', ['task_id'], 'tasks', ['id'], (cb) => cb.onDelete('cascade'))
-		.addForeignKeyConstraint('maintenance_logs_equipment_fk', ['equipment_id'], 'equipment', ['id'], (cb) => cb.onDelete('cascade'))
+		.addForeignKeyConstraint('maintenance_logs_task_fk', ['task_id'], 'tasks', ['id'], (cb) =>
+			cb.onDelete('cascade')
+		)
+		.addForeignKeyConstraint(
+			'maintenance_logs_equipment_fk',
+			['equipment_id'],
+			'equipment',
+			['id'],
+			(cb) => cb.onDelete('cascade')
+		)
 		.execute();
 
 	await db.schema
@@ -89,7 +101,13 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('file_size', 'integer', (col) => col.notNull())
 		.addColumn('file_path', 'text', (col) => col.notNull())
 		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-		.addForeignKeyConstraint('attachments_log_fk', ['maintenance_log_id'], 'maintenance_logs', ['id'], (cb) => cb.onDelete('cascade'))
+		.addForeignKeyConstraint(
+			'attachments_log_fk',
+			['maintenance_log_id'],
+			'maintenance_logs',
+			['id'],
+			(cb) => cb.onDelete('cascade')
+		)
 		.execute();
 
 	// Notification tables
@@ -129,22 +147,74 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('threshold_type', 'text', (col) => col.notNull())
 		.addColumn('notification_date', 'text', (col) => col.notNull())
 		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-		.addForeignKeyConstraint('notification_log_task_fk', ['task_id'], 'tasks', ['id'], (cb) => cb.onDelete('cascade'))
+		.addForeignKeyConstraint('notification_log_task_fk', ['task_id'], 'tasks', ['id'], (cb) =>
+			cb.onDelete('cascade')
+		)
 		.execute();
 
 	// Create indexes for performance
-	await db.schema.createIndex('idx_equipment_type_id').ifNotExists().on('equipment').column('equipment_type_id').execute();
-	await db.schema.createIndex('idx_tasks_equipment').ifNotExists().on('tasks').column('equipment_id').execute();
-	await db.schema.createIndex('idx_tasks_status').ifNotExists().on('tasks').column('status').execute();
-	await db.schema.createIndex('idx_tasks_next_due').ifNotExists().on('tasks').columns(['next_due_date', 'next_due_usage_value']).execute();
-	await db.schema.createIndex('idx_maintenance_logs_task').ifNotExists().on('maintenance_logs').column('task_id').execute();
-	await db.schema.createIndex('idx_maintenance_logs_equipment').ifNotExists().on('maintenance_logs').column('equipment_id').execute();
-	await db.schema.createIndex('idx_maintenance_logs_date').ifNotExists().on('maintenance_logs').column('completed_date').execute();
-	await db.schema.createIndex('idx_attachments_log').ifNotExists().on('maintenance_log_attachments').column('maintenance_log_id').execute();
-	
+	await db.schema
+		.createIndex('idx_equipment_type_id')
+		.ifNotExists()
+		.on('equipment')
+		.column('equipment_type_id')
+		.execute();
+	await db.schema
+		.createIndex('idx_tasks_equipment')
+		.ifNotExists()
+		.on('tasks')
+		.column('equipment_id')
+		.execute();
+	await db.schema
+		.createIndex('idx_tasks_status')
+		.ifNotExists()
+		.on('tasks')
+		.column('status')
+		.execute();
+	await db.schema
+		.createIndex('idx_tasks_next_due')
+		.ifNotExists()
+		.on('tasks')
+		.columns(['next_due_date', 'next_due_usage_value'])
+		.execute();
+	await db.schema
+		.createIndex('idx_maintenance_logs_task')
+		.ifNotExists()
+		.on('maintenance_logs')
+		.column('task_id')
+		.execute();
+	await db.schema
+		.createIndex('idx_maintenance_logs_equipment')
+		.ifNotExists()
+		.on('maintenance_logs')
+		.column('equipment_id')
+		.execute();
+	await db.schema
+		.createIndex('idx_maintenance_logs_date')
+		.ifNotExists()
+		.on('maintenance_logs')
+		.column('completed_date')
+		.execute();
+	await db.schema
+		.createIndex('idx_attachments_log')
+		.ifNotExists()
+		.on('maintenance_log_attachments')
+		.column('maintenance_log_id')
+		.execute();
+
 	// Notification indexes
-	await db.schema.createIndex('idx_notification_subscriptions_endpoint').ifNotExists().on('notification_subscriptions').column('endpoint').execute();
-	await db.schema.createIndex('idx_notification_log_task_threshold').ifNotExists().on('notification_log').columns(['task_id', 'threshold_type', 'notification_date']).execute();
+	await db.schema
+		.createIndex('idx_notification_subscriptions_endpoint')
+		.ifNotExists()
+		.on('notification_subscriptions')
+		.column('endpoint')
+		.execute();
+	await db.schema
+		.createIndex('idx_notification_log_task_threshold')
+		.ifNotExists()
+		.on('notification_log')
+		.columns(['task_id', 'threshold_type', 'notification_date'])
+		.execute();
 
 	// Global Settings table
 	await db.schema
@@ -153,7 +223,9 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
 		.addColumn('setting_key', 'text', (col) => col.notNull().unique())
 		.addColumn('setting_value', 'text', (col) => col.notNull())
-		.addColumn('data_type', 'text', (col) => col.notNull().check(sql`data_type IN ('integer', 'boolean', 'string', 'json')`))
+		.addColumn('data_type', 'text', (col) =>
+			col.notNull().check(sql`data_type IN ('integer', 'boolean', 'string', 'json')`)
+		)
 		.addColumn('description', 'text')
 		.addColumn('default_value', 'text', (col) => col.notNull())
 		.addColumn('min_value', 'text')
@@ -163,7 +235,12 @@ export async function initializeTables(db: Kysely<Database>) {
 		.execute();
 
 	// Global Settings indexes
-	await db.schema.createIndex('idx_global_settings_key').ifNotExists().on('global_settings').column('setting_key').execute();
+	await db.schema
+		.createIndex('idx_global_settings_key')
+		.ifNotExists()
+		.on('global_settings')
+		.column('setting_key')
+		.execute();
 
 	// Quick Edit Actions table
 	await db.schema
@@ -172,15 +249,27 @@ export async function initializeTables(db: Kysely<Database>) {
 		.addColumn('id', 'text', (col) => col.primaryKey()) // UUID
 		.addColumn('user_prompt', 'text', (col) => col.notNull())
 		.addColumn('interpreted_action', 'text', (col) => col.notNull()) // JSON string
-		.addColumn('status', 'text', (col) => col.notNull().check(sql`status IN ('pending', 'confirmed', 'cancelled', 'executed')`))
+		.addColumn('status', 'text', (col) =>
+			col.notNull().check(sql`status IN ('pending', 'confirmed', 'cancelled', 'executed')`)
+		)
 		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
 		.addColumn('executed_at', 'text')
 		.addColumn('result', 'text') // JSON string
 		.execute();
 
 	// Quick Edit Actions indexes
-	await db.schema.createIndex('idx_quick_edit_actions_status').ifNotExists().on('quick_edit_actions').column('status').execute();
-	await db.schema.createIndex('idx_quick_edit_actions_created_at').ifNotExists().on('quick_edit_actions').column('created_at').execute();
+	await db.schema
+		.createIndex('idx_quick_edit_actions_status')
+		.ifNotExists()
+		.on('quick_edit_actions')
+		.column('status')
+		.execute();
+	await db.schema
+		.createIndex('idx_quick_edit_actions_created_at')
+		.ifNotExists()
+		.on('quick_edit_actions')
+		.column('created_at')
+		.execute();
 
 	// Instance metadata table for deployment tracking
 	await db.schema
@@ -206,8 +295,18 @@ export async function initializeTables(db: Kysely<Database>) {
 		.execute();
 
 	// System info indexes
-	await db.schema.createIndex('idx_system_info_type').ifNotExists().on('system_info').column('info_type').execute();
-	await db.schema.createIndex('idx_system_info_created_at').ifNotExists().on('system_info').column('created_at').execute();
+	await db.schema
+		.createIndex('idx_system_info_type')
+		.ifNotExists()
+		.on('system_info')
+		.column('info_type')
+		.execute();
+	await db.schema
+		.createIndex('idx_system_info_created_at')
+		.ifNotExists()
+		.on('system_info')
+		.column('created_at')
+		.execute();
 
 	// Add future-proofing user_id columns to core tables (defaulting to 'default_user' for single-user mode)
 	await addColumnIfNotExists(db, 'equipment', 'user_id', 'text', 'default_user');
@@ -226,15 +325,19 @@ async function addColumnIfNotExists(
 ) {
 	try {
 		// Check if column exists by attempting to query it
-		await db.selectFrom(tableName).select([columnName as any]).limit(1).execute();
-	} catch (error) {
+		await db
+			.selectFrom(tableName)
+			.select([columnName as any])
+			.limit(1)
+			.execute();
+	} catch (_) {
 		// Column doesn't exist, add it
 		console.log(`Adding ${columnName} column to ${tableName} table`);
 		await db.schema
 			.alterTable(tableName)
 			.addColumn(columnName, columnType as any, (col) => col.defaultTo(defaultValue))
 			.execute();
-		
+
 		// Create index for user_id columns for future multi-user support
 		if (columnName === 'user_id') {
 			await db.schema
@@ -276,79 +379,81 @@ async function seedEquipmentTypes(txn: Transaction<Database>) {
 
 async function seedTaskTypes(txn: Transaction<Database>) {
 	// mechmateDefaultTaskTypes.ts
- 	const defaultTaskTypes = [
+	const defaultTaskTypes = [
 		{
-		id: 1,
-		name: 'Fluid Change',
-		description:
-			'Drain and refill lubricating, hydraulic, or cooling fluids (engine oil, gearbox oil, coolant, hydraulic oil, etc.)',
-		estimated_duration_minutes: 60
+			id: 1,
+			name: 'Fluid Change',
+			description:
+				'Drain and refill lubricating, hydraulic, or cooling fluids (engine oil, gearbox oil, coolant, hydraulic oil, etc.)',
+			estimated_duration_minutes: 60
 		},
 		{
-		id: 2,
-		name: 'Filter Replacement',
-		description: 'Replace air, fuel, water, particulate, or oil filters',
-		estimated_duration_minutes: 30
+			id: 2,
+			name: 'Filter Replacement',
+			description: 'Replace air, fuel, water, particulate, or oil filters',
+			estimated_duration_minutes: 30
 		},
 		{
-		id: 3,
-		name: 'General Inspection',
-		description: 'Visual / functional check for leaks, wear, play, noise, or damage',
-		estimated_duration_minutes: 45
+			id: 3,
+			name: 'General Inspection',
+			description: 'Visual / functional check for leaks, wear, play, noise, or damage',
+			estimated_duration_minutes: 45
 		},
 		{
-		id: 4,
-		name: 'Cleaning',
-		description: 'Remove dirt, dust, grease, or residue from key components or housings',
-		estimated_duration_minutes: 30
+			id: 4,
+			name: 'Cleaning',
+			description: 'Remove dirt, dust, grease, or residue from key components or housings',
+			estimated_duration_minutes: 30
 		},
 		{
-		id: 5,
-		name: 'Lubrication',
-		description: 'Apply grease or oil to bearings, pivots, chains, slides, or other moving parts',
-		estimated_duration_minutes: 20
+			id: 5,
+			name: 'Lubrication',
+			description: 'Apply grease or oil to bearings, pivots, chains, slides, or other moving parts',
+			estimated_duration_minutes: 20
 		},
 		{
-		id: 6,
-		name: 'Drive Component Service',
-		description: 'Inspect, adjust, or replace belts, chains, cables, sprockets, or pulleys',
-		estimated_duration_minutes: 90
+			id: 6,
+			name: 'Drive Component Service',
+			description: 'Inspect, adjust, or replace belts, chains, cables, sprockets, or pulleys',
+			estimated_duration_minutes: 90
 		},
 		{
-		id: 7,
-		name: 'Fastener Torque Check',
-		description: 'Tighten bolts, screws, lugs, and clamps to specified torque values',
-		estimated_duration_minutes: 25
+			id: 7,
+			name: 'Fastener Torque Check',
+			description: 'Tighten bolts, screws, lugs, and clamps to specified torque values',
+			estimated_duration_minutes: 25
 		},
 		{
-		id: 8,
-		name: 'Calibration / Alignment',
-		description: 'Calibrate sensors, tools, or align mechanical / optical components for accuracy',
-		estimated_duration_minutes: 60
+			id: 8,
+			name: 'Calibration / Alignment',
+			description:
+				'Calibrate sensors, tools, or align mechanical / optical components for accuracy',
+			estimated_duration_minutes: 60
 		},
 		{
-		id: 9,
-		name: 'Electrical / Battery Service',
-		description: 'Test, charge, or replace batteries; inspect wiring, connectors, and fuses',
-		estimated_duration_minutes: 40
+			id: 9,
+			name: 'Electrical / Battery Service',
+			description: 'Test, charge, or replace batteries; inspect wiring, connectors, and fuses',
+			estimated_duration_minutes: 40
 		},
 		{
-		id: 10,
-		name: 'Software / Firmware Update',
-		description: 'Update onboard firmware, embedded software, or configuration files',
-		estimated_duration_minutes: 30
+			id: 10,
+			name: 'Software / Firmware Update',
+			description: 'Update onboard firmware, embedded software, or configuration files',
+			estimated_duration_minutes: 30
 		},
 		{
-		id: 11,
-		name: 'Wear-Part Replacement',
-		description: 'Replace consumables such as brake pads, spark plugs, seals, blades, or gaskets',
-		estimated_duration_minutes: 60
+			id: 11,
+			name: 'Wear-Part Replacement',
+			description: 'Replace consumables such as brake pads, spark plugs, seals, blades, or gaskets',
+			estimated_duration_minutes: 60
 		},
 		{
-		id: 12,
-		name: 'Seasonal Storage / Preservation',
-		description: 'Prepare equipment for long-term storage (fuel stabiliser, rust inhibition, draining, etc.)',
-		estimated_duration_minutes: 90
+			id: 12,
+			name: 'Seasonal Storage / Preservation',
+			description:
+				'Prepare equipment for long-term storage (fuel stabiliser, rust inhibition, draining, etc.)',
+			estimated_duration_minutes: 90
 		}
 	] as const;
 
@@ -398,14 +503,14 @@ async function seedGlobalSettings(txn: Transaction<Database>) {
 			setting_value: 'metric',
 			data_type: 'string' as const,
 			description: 'The users preferred measurement system',
-			default_value: 'metric',
+			default_value: 'metric'
 		},
 		{
 			setting_key: 'assistant_tone',
 			setting_value: 'professional',
 			data_type: 'string' as const,
 			description: 'The conversational style of the mech assistant',
-			default_value: 'professional',
+			default_value: 'professional'
 		}
 	];
 
@@ -420,10 +525,10 @@ async function seedInstanceMetadata(txn: Transaction<Database>) {
 	// Generate unique instance ID
 	const { v4: uuidv4 } = await import('uuid');
 	const instanceId = uuidv4();
-	
+
 	// Get version from package.json or environment
 	const version = process.env.MECHMATE_VERSION || '0.0.1';
-	
+
 	const instanceMetadata = {
 		instance_id: instanceId,
 		version: version,
@@ -453,8 +558,5 @@ async function seedInstanceMetadata(txn: Transaction<Database>) {
 		})
 	};
 
-	await txn
-		.insertInto('system_info')
-		.values(startupInfo)
-		.execute();
+	await txn.insertInto('system_info').values(startupInfo).execute();
 }

@@ -34,12 +34,15 @@ interface HealthStatus {
 export const GET: RequestHandler = async ({ locals }) => {
 	const config = getConfig();
 	const startTime = performance.now();
-	
+
 	if (!config.HEALTH_CHECK_ENABLED) {
-		return json({ 
-			status: 'disabled',
-			message: 'Health checks are disabled'
-		}, { status: 503 });
+		return json(
+			{
+				status: 'disabled',
+				message: 'Health checks are disabled'
+			},
+			{ status: 503 }
+		);
 	}
 
 	const checks: HealthCheck['checks'] = {
@@ -50,13 +53,13 @@ export const GET: RequestHandler = async ({ locals }) => {
 	};
 
 	// Determine overall status
-	const hasFailures = Object.values(checks).some(check => check.status === 'fail');
-	const hasWarnings = Object.values(checks).some(check => check.status === 'warn');
-	
-	const overallStatus: HealthCheck['status'] = hasFailures 
-		? 'unhealthy' 
-		: hasWarnings 
-			? 'degraded' 
+	const hasFailures = Object.values(checks).some((check) => check.status === 'fail');
+	const hasWarnings = Object.values(checks).some((check) => check.status === 'warn');
+
+	const overallStatus: HealthCheck['status'] = hasFailures
+		? 'unhealthy'
+		: hasWarnings
+			? 'degraded'
 			: 'healthy';
 
 	const healthCheck: HealthCheck = {
@@ -72,11 +75,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 	};
 
-	const httpStatus = overallStatus === 'healthy' ? 200 : 
-					  overallStatus === 'degraded' ? 200 : 503;
+	const httpStatus = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;
 
 	const responseTime = performance.now() - startTime;
-	return json(healthCheck, { 
+	return json(healthCheck, {
 		status: httpStatus,
 		headers: {
 			'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -87,18 +89,18 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 async function checkDatabase(db: any): Promise<HealthStatus> {
 	const startTime = performance.now();
-	
+
 	try {
 		// Simple query to check database connectivity
 		await db.selectFrom('instance_metadata').select(['id']).limit(1).execute();
-		
+
 		const responseTime = performance.now() - startTime;
-		
+
 		// Check if database file exists and get size
 		const dbPath = getDatabasePath();
 		const dbExists = existsSync(dbPath);
 		const dbSize = dbExists ? statSync(dbPath).size : 0;
-		
+
 		return {
 			status: 'pass',
 			message: 'Database is accessible',
@@ -106,7 +108,7 @@ async function checkDatabase(db: any): Promise<HealthStatus> {
 			details: {
 				path: dbPath,
 				size_bytes: dbSize,
-				size_mb: Math.round(dbSize / 1024 / 1024 * 100) / 100
+				size_mb: Math.round((dbSize / 1024 / 1024) * 100) / 100
 			}
 		};
 	} catch (error) {
@@ -120,7 +122,7 @@ async function checkDatabase(db: any): Promise<HealthStatus> {
 
 async function checkFilesystem(): Promise<HealthStatus> {
 	const config = getConfig();
-	
+
 	try {
 		const checks = [
 			{ path: config.DATABASE_DIR, name: 'database directory' },
@@ -128,7 +130,7 @@ async function checkFilesystem(): Promise<HealthStatus> {
 			{ path: config.UPLOAD_DIR, name: 'upload directory' }
 		];
 
-		const results = checks.map(check => {
+		const results = checks.map((check) => {
 			const exists = existsSync(check.path);
 			return {
 				path: check.path,
@@ -137,11 +139,13 @@ async function checkFilesystem(): Promise<HealthStatus> {
 			};
 		});
 
-		const allAccessible = results.every(r => r.exists && r.writable);
-		
+		const allAccessible = results.every((r) => r.exists && r.writable);
+
 		return {
 			status: allAccessible ? 'pass' : 'warn',
-			message: allAccessible ? 'All directories accessible' : 'Some directories may not be accessible',
+			message: allAccessible
+				? 'All directories accessible'
+				: 'Some directories may not be accessible',
 			details: { directories: results }
 		};
 	} catch (error) {
@@ -159,12 +163,14 @@ function checkMemory(): HealthStatus {
 	const usagePercent = (usedMemoryMB / totalMemoryMB) * 100;
 
 	// Warning thresholds
-	const status = usagePercent > 90 ? 'fail' : 
-				  usagePercent > 75 ? 'warn' : 'pass';
+	const status = usagePercent > 90 ? 'fail' : usagePercent > 75 ? 'warn' : 'pass';
 
-	const message = status === 'fail' ? 'High memory usage detected' :
-					status === 'warn' ? 'Elevated memory usage' :
-					'Memory usage normal';
+	const message =
+		status === 'fail'
+			? 'High memory usage detected'
+			: status === 'warn'
+				? 'Elevated memory usage'
+				: 'Memory usage normal';
 
 	return {
 		status,
@@ -173,8 +179,8 @@ function checkMemory(): HealthStatus {
 			heap_used_mb: Math.round(usedMemoryMB * 100) / 100,
 			heap_total_mb: Math.round(totalMemoryMB * 100) / 100,
 			usage_percent: Math.round(usagePercent * 100) / 100,
-			rss_mb: Math.round(usage.rss / 1024 / 1024 * 100) / 100,
-			external_mb: Math.round(usage.external / 1024 / 1024 * 100) / 100
+			rss_mb: Math.round((usage.rss / 1024 / 1024) * 100) / 100,
+			external_mb: Math.round((usage.external / 1024 / 1024) * 100) / 100
 		}
 	};
 }
@@ -193,9 +199,10 @@ function checkConfiguration(): HealthStatus {
 	}
 
 	const status = issues.length === 0 ? 'pass' : 'warn';
-	const message = status === 'pass' 
-		? 'Configuration complete'
-		: `Configuration issues: ${issues.length} optional features disabled`;
+	const message =
+		status === 'pass'
+			? 'Configuration complete'
+			: `Configuration issues: ${issues.length} optional features disabled`;
 
 	return {
 		status,

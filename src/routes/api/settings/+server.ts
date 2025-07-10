@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const updates = await request.json();
-		
+
 		if (!updates || typeof updates !== 'object') {
 			return error(400, 'Invalid request body');
 		}
@@ -29,16 +29,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		for (const [key, value] of Object.entries(updates)) {
 			try {
 				// Validate the setting
-				const validation = await globalSettingsRepository.validateSetting(locals.db, key, String(value));
-				
+				const validation = await globalSettingsRepository.validateSetting(
+					locals.db,
+					key,
+					String(value)
+				);
+
 				if (!validation.valid) {
 					errors[key] = validation.error || 'Invalid value';
 					continue;
 				}
 
 				// Update the setting
-				const updatedSetting = await globalSettingsRepository.updateByKey(locals.db, key, String(value));
-				
+				const updatedSetting = await globalSettingsRepository.updateByKey(
+					locals.db,
+					key,
+					String(value)
+				);
+
 				if (updatedSetting) {
 					results[key] = {
 						success: true,
@@ -61,7 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// If all updates failed, return 400
 		if (Object.keys(results).length === 0 && Object.keys(errors).length > 0) {
-			return error(400, { message: 'No settings were updated'});
+			return error(400, { message: 'No settings were updated' });
 		}
 
 		return json(response);

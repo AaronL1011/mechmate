@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			try {
 				const stats = statSync(dbPath);
 				dbSize = stats.size;
-				dbSizeMB = Math.round(dbSize / 1024 / 1024 * 100) / 100;
+				dbSizeMB = Math.round((dbSize / 1024 / 1024) * 100) / 100;
 			} catch (err) {
 				console.warn('Failed to get database size:', err);
 			}
@@ -140,7 +140,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 				'Cache-Control': 'no-cache, no-store, must-revalidate'
 			}
 		});
-
 	} catch (err) {
 		console.error('Failed to gather system information:', err);
 		throw error(500, 'Failed to gather system information');

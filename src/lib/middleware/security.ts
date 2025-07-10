@@ -23,7 +23,7 @@ setInterval(() => {
 
 export async function applyRateLimit(event: RequestEvent): Promise<void> {
 	const config = getConfig();
-	
+
 	if (!config.RATE_LIMIT_ENABLED) {
 		return;
 	}
@@ -38,7 +38,7 @@ export async function applyRateLimit(event: RequestEvent): Promise<void> {
 	const maxRequests = config.RATE_LIMIT_MAX_REQUESTS;
 
 	let entry = rateLimitStore.get(clientKey);
-	
+
 	if (!entry || now > entry.resetTime) {
 		// Create new entry or reset expired entry
 		entry = {
@@ -55,7 +55,7 @@ export async function applyRateLimit(event: RequestEvent): Promise<void> {
 	if (entry.count > maxRequests) {
 		// Rate limit exceeded
 		const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-		
+
 		throw error(429, `Too many requests. Try again in ${retryAfter} seconds.`);
 	}
 
@@ -70,7 +70,7 @@ export function addSecurityHeaders(response: Response): Response {
 	response.headers.set('X-XSS-Protection', '1; mode=block');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-	
+
 	// Content Security Policy
 	const csp = [
 		"default-src 'self'",
@@ -84,9 +84,9 @@ export function addSecurityHeaders(response: Response): Response {
 		"base-uri 'self'",
 		"form-action 'self'",
 		"frame-ancestors 'none'",
-		"upgrade-insecure-requests"
+		'upgrade-insecure-requests'
 	].join('; ');
-	
+
 	response.headers.set('Content-Security-Policy', csp);
 
 	return response;
@@ -115,7 +115,7 @@ function hashString(str: string): string {
 	let hash = 0;
 	for (let i = 0; i < str.length; i++) {
 		const char = str.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
+		hash = (hash << 5) - hash + char;
 		hash = hash & hash; // Convert to 32-bit integer
 	}
 	return Math.abs(hash).toString(36);
@@ -125,14 +125,14 @@ function hashString(str: string): string {
 export function validateContentType(event: RequestEvent, allowedTypes: string[]): boolean {
 	const contentType = event.request.headers.get('content-type');
 	if (!contentType) return false;
-	
-	return allowedTypes.some(type => contentType.includes(type));
+
+	return allowedTypes.some((type) => contentType.includes(type));
 }
 
 export function validateContentLength(event: RequestEvent, maxSizeBytes: number): boolean {
 	const contentLength = event.request.headers.get('content-length');
 	if (!contentLength) return true; // No content-length header is okay
-	
+
 	const size = parseInt(contentLength, 10);
 	return !isNaN(size) && size <= maxSizeBytes;
 }
@@ -140,7 +140,7 @@ export function validateContentLength(event: RequestEvent, maxSizeBytes: number)
 // CORS helper
 export function applyCORS(event: RequestEvent, response: Response): Response {
 	const config = getConfig();
-	
+
 	if (!config.CORS_ENABLED) {
 		return response;
 	}

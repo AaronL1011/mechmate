@@ -93,48 +93,68 @@ export const globalSettingsRepository = {
 	},
 
 	getByKey: (db: Kysely<Database>, key: string): Promise<GlobalSetting | undefined> => {
-		return db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
+		return db
+			.selectFrom('global_settings')
+			.selectAll()
+			.where('setting_key', '=', key)
+			.executeTakeFirst();
 	},
 
 	getTypedValue: async <T>(db: Kysely<Database>, key: string, defaultValue: T): Promise<T> => {
-		const setting = await db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
-		
+		const setting = await db
+			.selectFrom('global_settings')
+			.selectAll()
+			.where('setting_key', '=', key)
+			.executeTakeFirst();
+
 		if (!setting) return defaultValue;
-		
+
 		return convertSettingValue(setting.setting_value, setting.data_type, defaultValue);
 	},
 
 	getAllAsObject: async (db: Kysely<Database>): Promise<GlobalSettingsValues> => {
 		const settings = await db.selectFrom('global_settings').selectAll().execute();
-		
+
 		const result: any = {};
 		for (const setting of settings) {
 			result[setting.setting_key] = convertSettingValue(
-				setting.setting_value, 
-				setting.data_type, 
+				setting.setting_value,
+				setting.data_type,
 				setting.default_value
 			);
 		}
-		
+
 		// Merge with defaults for any missing settings
 		return { ...getDefaultSettings(), ...result };
 	},
 
-	updateByKey: async (db: Kysely<Database>, key: string, value: string): Promise<GlobalSetting | undefined> => {
+	updateByKey: async (
+		db: Kysely<Database>,
+		key: string,
+		value: string
+	): Promise<GlobalSetting | undefined> => {
 		return db
 			.updateTable('global_settings')
-			.set({ 
-				setting_value: value, 
-				updated_at: sql`CURRENT_TIMESTAMP` 
+			.set({
+				setting_value: value,
+				updated_at: sql`CURRENT_TIMESTAMP`
 			})
 			.where('setting_key', '=', key)
 			.returningAll()
 			.executeTakeFirst();
 	},
 
-	validateSetting: async (db: Kysely<Database>, key: string, value: string): Promise<{ valid: boolean; error?: string }> => {
-		const setting = await db.selectFrom('global_settings').selectAll().where('setting_key', '=', key).executeTakeFirst();
-		
+	validateSetting: async (
+		db: Kysely<Database>,
+		key: string,
+		value: string
+	): Promise<{ valid: boolean; error?: string }> => {
+		const setting = await db
+			.selectFrom('global_settings')
+			.selectAll()
+			.where('setting_key', '=', key)
+			.executeTakeFirst();
+
 		if (!setting) {
 			return { valid: false, error: 'Setting not found' };
 		}
@@ -147,7 +167,7 @@ export const globalSettingsRepository = {
 					if (isNaN(numValue) || !Number.isInteger(numValue)) {
 						return { valid: false, error: 'Value must be an integer' };
 					}
-					
+
 					// Range validation
 					if (setting.min_value && numValue < Number(setting.min_value)) {
 						return { valid: false, error: `Value must be at least ${setting.min_value}` };
@@ -167,7 +187,7 @@ export const globalSettingsRepository = {
 					break;
 				// string type needs no special validation
 			}
-		} catch (error) {
+		} catch (_) {
 			return { valid: false, error: `Invalid ${setting.data_type} value` };
 		}
 
@@ -209,17 +229,23 @@ export const equipmentRepository = {
 		return result;
 	},
 
-	update: async (db: Kysely<Database>, id: number, updates: UpdateEquipmentRequest): Promise<Equipment | undefined> => {
+	update: async (
+		db: Kysely<Database>,
+		id: number,
+		updates: UpdateEquipmentRequest
+	): Promise<Equipment | undefined> => {
 		const updateData: any = {};
-		
+
 		if (updates.name !== undefined) updateData.name = updates.name;
-		if (updates.equipment_type_id !== undefined) updateData.equipment_type_id = updates.equipment_type_id;
+		if (updates.equipment_type_id !== undefined)
+			updateData.equipment_type_id = updates.equipment_type_id;
 		if (updates.make !== undefined) updateData.make = updates.make;
 		if (updates.model !== undefined) updateData.model = updates.model;
 		if (updates.year !== undefined) updateData.year = updates.year;
 		if (updates.serial_number !== undefined) updateData.serial_number = updates.serial_number;
 		if (updates.purchase_date !== undefined) updateData.purchase_date = updates.purchase_date;
-		if (updates.current_usage_value !== undefined) updateData.current_usage_value = updates.current_usage_value;
+		if (updates.current_usage_value !== undefined)
+			updateData.current_usage_value = updates.current_usage_value;
 		if (updates.usage_unit !== undefined) updateData.usage_unit = updates.usage_unit;
 		if (updates.metadata !== undefined) updateData.metadata = JSON.stringify(updates.metadata);
 		if (updates.tags !== undefined) updateData.tags = JSON.stringify(updates.tags);
@@ -250,7 +276,10 @@ export const equipmentTypeRepository = {
 		return db.selectFrom('equipment_types').selectAll().where('id', '=', id).executeTakeFirst();
 	},
 
-	create: async (db: Kysely<Database>, equipmentType: CreateEquipmentTypeRequest): Promise<EquipmentType | undefined> => {
+	create: async (
+		db: Kysely<Database>,
+		equipmentType: CreateEquipmentTypeRequest
+	): Promise<EquipmentType | undefined> => {
 		const result = await db
 			.insertInto('equipment_types')
 			.values({ name: equipmentType.name.toLowerCase() })
@@ -258,7 +287,7 @@ export const equipmentTypeRepository = {
 			.executeTakeFirstOrThrow();
 
 		return result;
-	},
+	}
 };
 
 // Task Type Repository
@@ -287,7 +316,10 @@ export const taskRepository = {
 		return db.selectFrom('tasks').selectAll().where('id', '=', id).executeTakeFirst();
 	},
 
-	getWithDetails: async (db: Kysely<Database>, id: number): Promise<TaskWithDetails | undefined> => {
+	getWithDetails: async (
+		db: Kysely<Database>,
+		id: number
+	): Promise<TaskWithDetails | undefined> => {
 		const task = await db
 			.selectFrom('tasks')
 			.innerJoin('equipment', 'tasks.equipment_id', 'equipment.id')
@@ -301,6 +333,7 @@ export const taskRepository = {
 		// Transform the flat result into nested structure
 		const taskData: Task = {
 			id: task.id,
+			user_id: task.user_id,
 			equipment_id: task.equipment_id,
 			task_type_id: task.task_type_id,
 			title: task.title,
@@ -319,6 +352,7 @@ export const taskRepository = {
 
 		const equipment: Equipment = {
 			id: task.equipment_id,
+			user_id: task.user_id,
 			name: task.name,
 			equipment_type_id: task.equipment_type_id,
 			make: task.make,
@@ -359,17 +393,18 @@ export const taskRepository = {
 	},
 
 	getUpcoming: async (db: Kysely<Database>, customDays?: number): Promise<Task[]> => {
-		const days = customDays ?? await globalSettingsRepository.getTypedValue(db, 'upcoming_task_range_days', 90);
-		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		const days =
+			customDays ??
+			(await globalSettingsRepository.getTypedValue(db, 'upcoming_task_range_days', 90));
+		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+			.toISOString()
+			.split('T')[0];
 		return db
 			.selectFrom('tasks')
 			.selectAll()
 			.where('status', '=', 'pending')
-			.where((eb) => 
-				eb.or([
-					eb('next_due_date', 'is', null),
-					eb('next_due_date', '<=', futureDate)
-				])
+			.where((eb) =>
+				eb.or([eb('next_due_date', 'is', null), eb('next_due_date', '<=', futureDate)])
 			)
 			.orderBy('next_due_date')
 			.orderBy('next_due_usage_value')
@@ -383,7 +418,7 @@ export const taskRepository = {
 			.innerJoin('equipment', 'tasks.equipment_id', 'equipment.id')
 			.selectAll()
 			.where('tasks.status', '=', 'pending')
-			.where((eb) => 
+			.where((eb) =>
 				eb.or([
 					eb('tasks.next_due_date', '<', today),
 					eb.and([
@@ -393,12 +428,16 @@ export const taskRepository = {
 				])
 			)
 			.orderBy('tasks.next_due_date')
-      .orderBy('tasks.next_due_usage_value')
+			.orderBy('tasks.next_due_usage_value')
 			.execute();
 	},
 
 	create: async (db: Kysely<Database>, task: CreateTaskRequest): Promise<Task> => {
-		const nextDueDate = task.time_interval_days ? new Date(Date.now() + task.time_interval_days * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined;
+		const nextDueDate = task.time_interval_days
+			? new Date(Date.now() + task.time_interval_days * 24 * 60 * 60 * 1000)
+					.toISOString()
+					.split('T')[0]
+			: undefined;
 		const newTask: NewTask = {
 			equipment_id: task.equipment_id,
 			task_type_id: task.task_type_id,
@@ -420,19 +459,27 @@ export const taskRepository = {
 		return result;
 	},
 
-	update: async (db: Kysely<Database>, id: number, updates: UpdateTaskRequest): Promise<Task | undefined> => {
+	update: async (
+		db: Kysely<Database>,
+		id: number,
+		updates: UpdateTaskRequest
+	): Promise<Task | undefined> => {
 		const updateData: any = {};
-		
+
 		if (updates.title !== undefined) updateData.title = updates.title;
 		if (updates.description !== undefined) updateData.description = updates.description;
 		if (updates.usage_interval !== undefined) updateData.usage_interval = updates.usage_interval;
-		if (updates.time_interval_days !== undefined) updateData.time_interval_days = updates.time_interval_days;
+		if (updates.time_interval_days !== undefined)
+			updateData.time_interval_days = updates.time_interval_days;
 		if (updates.priority !== undefined) updateData.priority = updates.priority;
 		if (updates.status !== undefined) updateData.status = updates.status;
 		if (updates.next_due_date !== undefined) updateData.next_due_date = updates.next_due_date;
-		if (updates.next_due_usage_value !== undefined) updateData.next_due_usage_value = updates.next_due_usage_value;
-		if (updates.last_completed_usage_value !== undefined) updateData.last_completed_usage_value = updates.last_completed_usage_value;
-		if (updates.last_completed_date !== undefined) updateData.last_completed_date = updates.last_completed_date;
+		if (updates.next_due_usage_value !== undefined)
+			updateData.next_due_usage_value = updates.next_due_usage_value;
+		if (updates.last_completed_usage_value !== undefined)
+			updateData.last_completed_usage_value = updates.last_completed_usage_value;
+		if (updates.last_completed_date !== undefined)
+			updateData.last_completed_date = updates.last_completed_date;
 
 		const result = await db
 			.updateTable('tasks')
@@ -495,7 +542,10 @@ export const maintenanceLogRepository = {
 			.execute();
 	},
 
-	create: async (db: Kysely<Database>, log: Omit<MaintenanceLog, 'id' | 'created_at'>): Promise<MaintenanceLog> => {
+	create: async (
+		db: Kysely<Database>,
+		log: Omit<MaintenanceLog, 'id' | 'created_at'>
+	): Promise<MaintenanceLog> => {
 		const newLog: NewMaintenanceLog = {
 			task_id: log.task_id,
 			equipment_id: log.equipment_id,
@@ -521,21 +571,26 @@ export const maintenanceLogRepository = {
 export const dashboardRepository = {
 	getStats: async (db: Kysely<Database>): Promise<DashboardStats> => {
 		const days = await globalSettingsRepository.getTypedValue(db, 'upcoming_task_range_days', 90);
-		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+			.toISOString()
+			.split('T')[0];
 		const today = new Date().toISOString().split('T')[0];
-		
+
 		const [equipmentCount, taskCount, upcomingCount, overdueCount] = await Promise.all([
-			db.selectFrom('equipment').select(db.fn.count<number>('id').as('count')).executeTakeFirstOrThrow(),
-			db.selectFrom('tasks').select(db.fn.count<number>('id').as('count')).executeTakeFirstOrThrow(),
+			db
+				.selectFrom('equipment')
+				.select(db.fn.count<number>('id').as('count'))
+				.executeTakeFirstOrThrow(),
+			db
+				.selectFrom('tasks')
+				.select(db.fn.count<number>('id').as('count'))
+				.executeTakeFirstOrThrow(),
 			db
 				.selectFrom('tasks')
 				.select(db.fn.count<number>('id').as('count'))
 				.where('status', '=', 'pending')
-				.where((eb) => 
-					eb.or([
-						eb('next_due_date', 'is', null),
-						eb('next_due_date', '<=', futureDate)
-					])
+				.where((eb) =>
+					eb.or([eb('next_due_date', 'is', null), eb('next_due_date', '<=', futureDate)])
 				)
 				.executeTakeFirstOrThrow(),
 			db
@@ -543,7 +598,7 @@ export const dashboardRepository = {
 				.innerJoin('equipment', 'tasks.equipment_id', 'equipment.id')
 				.select(db.fn.count<number>('tasks.id').as('count'))
 				.where('tasks.status', '=', 'pending')
-				.where((eb) => 
+				.where((eb) =>
 					eb.or([
 						eb('tasks.next_due_date', '<', today),
 						eb.and([
@@ -582,7 +637,10 @@ export const notificationSubscriptionRepository = {
 			.executeTakeFirst();
 	},
 
-	getByEndpoint: (db: Kysely<Database>, endpoint: string): Promise<NotificationSubscription | undefined> => {
+	getByEndpoint: (
+		db: Kysely<Database>,
+		endpoint: string
+	): Promise<NotificationSubscription | undefined> => {
 		return db
 			.selectFrom('notification_subscriptions')
 			.selectAll()
@@ -590,7 +648,10 @@ export const notificationSubscriptionRepository = {
 			.executeTakeFirst();
 	},
 
-	create: async (db: Kysely<Database>, subscription: PushSubscriptionData): Promise<NotificationSubscription> => {
+	create: async (
+		db: Kysely<Database>,
+		subscription: PushSubscriptionData
+	): Promise<NotificationSubscription> => {
 		const newSubscription: NewNotificationSubscription = {
 			endpoint: subscription.endpoint,
 			p256dh_key: subscription.keys.p256dh,
@@ -616,10 +677,7 @@ export const notificationSubscriptionRepository = {
 	},
 
 	delete: async (db: Kysely<Database>, id: number): Promise<boolean> => {
-		const result = await db
-			.deleteFrom('notification_subscriptions')
-			.where('id', '=', id)
-			.execute();
+		const result = await db.deleteFrom('notification_subscriptions').where('id', '=', id).execute();
 		return result.length > 0;
 	},
 
@@ -644,9 +702,12 @@ export const notificationSettingsRepository = {
 		return settings ? convertSettingsToDisplay(settings) : undefined;
 	},
 
-	update: async (db: Kysely<Database>, settings: NotificationSettingsRequest): Promise<NotificationSettingsDisplay> => {
+	update: async (
+		db: Kysely<Database>,
+		settings: NotificationSettingsRequest
+	): Promise<NotificationSettingsDisplay> => {
 		const dbSettings = convertRequestToDb(settings);
-		
+
 		const result = await db
 			.updateTable('notification_settings')
 			.set({
@@ -663,7 +724,12 @@ export const notificationSettingsRepository = {
 
 // Notification Log Repository
 export const notificationLogRepository = {
-	hasBeenSent: async (db: Kysely<Database>, taskId: number, thresholdType: string, notificationDate: string): Promise<boolean> => {
+	hasBeenSent: async (
+		db: Kysely<Database>,
+		taskId: number,
+		thresholdType: string,
+		notificationDate: string
+	): Promise<boolean> => {
 		const result = await db
 			.selectFrom('notification_log')
 			.select(['id'])
@@ -675,7 +741,12 @@ export const notificationLogRepository = {
 		return result !== undefined;
 	},
 
-	log: async (db: Kysely<Database>, taskId: number, thresholdType: string, notificationDate: string): Promise<NotificationLog> => {
+	log: async (
+		db: Kysely<Database>,
+		taskId: number,
+		thresholdType: string,
+		notificationDate: string
+	): Promise<NotificationLog> => {
 		const newLog: NewNotificationLog = {
 			task_id: taskId,
 			threshold_type: thresholdType,
@@ -694,10 +765,6 @@ export const notificationLogRepository = {
 	cleanup: async (db: Kysely<Database>, olderThanDays: number = 90): Promise<void> => {
 		const cutoffDate = new Date(Date.now() + olderThanDays * 24 * 60 * 60 * 1000);
 
-		
-		await db
-			.deleteFrom('notification_log')
-			.where('created_at', '<', cutoffDate)
-			.execute();
+		await db.deleteFrom('notification_log').where('created_at', '<', cutoffDate).execute();
 	}
-}; 
+};
