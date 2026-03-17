@@ -12,6 +12,10 @@ export interface Database {
 	notification_log: NotificationLogTable;
 	global_settings: GlobalSettingsTable;
 	quick_edit_actions: QuickEditActionsTable;
+	agent_pending_actions: AgentPendingActionsTable;
+	agent_sessions: AgentSessionsTable;
+	agent_turns: AgentTurnsTable;
+	proactive_suggestions: ProactiveSuggestionsTable;
 	instance_metadata: InstanceMetadataTable;
 	system_info: SystemInfoTable;
 }
@@ -29,6 +33,7 @@ export interface EquipmentTable {
 	usage_unit: string;
 	metadata?: string; // JSON string for flexible equipment-specific data
 	tags?: string; // JSON array of tags
+	location?: string | null;
 	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, never>;
@@ -72,6 +77,7 @@ export interface TasksTable {
 	next_due_date?: string;
 	priority: 'low' | 'medium' | 'high' | 'critical';
 	status: 'pending' | 'completed' | 'overdue';
+	remind_days_before?: number | null;
 	user_id?: string; // Future-proofing for multi-user support
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, never>;
@@ -155,6 +161,7 @@ export interface CreateEquipmentRequest {
 	usage_unit: string;
 	metadata?: Record<string, any>;
 	tags?: string[];
+	location?: string | null;
 }
 
 export interface CreateEquipmentTypeRequest {
@@ -193,6 +200,7 @@ export interface UpdateEquipmentRequest {
 	usage_unit?: string;
 	metadata?: Record<string, any>;
 	tags?: string[];
+	location?: string | null;
 }
 
 export interface UpdateTaskRequest {
@@ -202,6 +210,7 @@ export interface UpdateTaskRequest {
 	time_interval_days?: number;
 	priority?: 'low' | 'medium' | 'high' | 'critical';
 	status?: 'pending' | 'completed' | 'overdue';
+	remind_days_before?: number | null;
 	last_completed_date?: string;
 	last_completed_usage_value?: number;
 	next_due_date?: string;
@@ -332,7 +341,7 @@ export interface GlobalSettingDefinition {
 	};
 }
 
-// Quick Edit Actions Table
+// Quick Edit Actions Table (legacy; prefer agent_pending_actions)
 export interface QuickEditActionsTable {
 	id: string; // UUID primary key
 	user_prompt: string;
@@ -346,6 +355,57 @@ export interface QuickEditActionsTable {
 export type QuickEditAction = Selectable<QuickEditActionsTable>;
 export type NewQuickEditAction = Insertable<QuickEditActionsTable>;
 export type QuickEditActionUpdate = Updateable<QuickEditActionsTable>;
+
+// Agent Pending Actions Table
+export interface AgentPendingActionsTable {
+	id: string;
+	session_id: string | null;
+	payload: string;
+	status: 'pending' | 'confirmed' | 'cancelled' | 'executed';
+	created_at: ColumnType<Date, string | undefined, never>;
+	expires_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type AgentPendingAction = Selectable<AgentPendingActionsTable>;
+export type NewAgentPendingAction = Insertable<AgentPendingActionsTable>;
+export type AgentPendingActionUpdate = Updateable<AgentPendingActionsTable>;
+
+// Agent Sessions Table
+export interface AgentSessionsTable {
+	id: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, never>;
+	source: string;
+}
+
+export type AgentSession = Selectable<AgentSessionsTable>;
+export type NewAgentSession = Insertable<AgentSessionsTable>;
+export type AgentSessionUpdate = Updateable<AgentSessionsTable>;
+
+// Agent Turns Table
+export interface AgentTurnsTable {
+	id: Generated<number>;
+	session_id: string;
+	role: string;
+	content: string;
+	tool_calls: string | null;
+	tool_call_id: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type AgentTurn = Selectable<AgentTurnsTable>;
+export type NewAgentTurn = Insertable<AgentTurnsTable>;
+export type AgentTurnUpdate = Updateable<AgentTurnsTable>;
+
+// Proactive Suggestions Table
+export interface ProactiveSuggestionsTable {
+	id: Generated<number>;
+	result: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type ProactiveSuggestion = Selectable<ProactiveSuggestionsTable>;
+export type NewProactiveSuggestion = Insertable<ProactiveSuggestionsTable>;
 
 // Instance Metadata Table
 export interface InstanceMetadataTable {

@@ -20,8 +20,17 @@
 	let responseMessage = $state<string>('');
 	let errorMessage = $state<string>('');
 	let showSuccessState = $state(false);
+	let sessionId = $state<string | null>(null);
+	let isListening = $state(false);
+	let voiceError = $state<string | null>(null);
+	let usedVoiceThisTurn = $state(false);
 
 	let textareaElement: HTMLTextAreaElement | null = $state(null);
+
+	const SpeechRecognitionAPI =
+		typeof window !== 'undefined' &&
+		(typeof (window as unknown as { SpeechRecognition?: new () => unknown }).SpeechRecognition !== 'undefined' ||
+			typeof (window as unknown as { webkitSpeechRecognition?: new () => unknown }).webkitSpeechRecognition !== 'undefined');
 
 	// Configure marked for safe rendering
 	marked.setOptions({
@@ -37,7 +46,6 @@
 	$effect(() => {
 		if (isOpen && textareaElement) {
 			textareaElement.focus();
-			// Reset state when modal opens
 			pendingAction = null;
 			actionId = null;
 			responseMessage = '';
@@ -52,6 +60,60 @@
 		onClose();
 	}
 
+	function startVoiceInput() {
+		voiceError = null;
+		if (!SpeechRecognitionAPI) {
+			voiceError = 'Speech recognition is not supported in this browser.';
+			return;
+		}
+		type SpeechResult = { resultIndex: number; results: Array<{ isFinal: boolean; 0: { transcript: string } }> };
+		type SpeechRecognitionInstance = {
+			continuous: boolean;
+			interimResults: boolean;
+			lang: string;
+			start: () => void;
+			onresult: (e: SpeechResult) => void;
+			onend: () => void;
+			onerror: (e: { error: string }) => void;
+		};
+		const Win = window as unknown as {
+			SpeechRecognition?: new () => SpeechRecognitionInstance;
+			webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+		};
+		const Recognition = Win.SpeechRecognition || Win.webkitSpeechRecognition;
+		if (!Recognition) return;
+		const recognition = new Recognition() as SpeechRecognitionInstance;
+		recognition.continuous = true;
+		recognition.interimResults = true;
+		recognition.lang = 'en-US';
+		isListening = true;
+		let transcriptAcc = '';
+		recognition.onresult = (event: SpeechResult) => {
+			for (let i = event.resultIndex; i < event.results.length; i++) {
+				if (event.results[i].isFinal) {
+					transcriptAcc += event.results[i][0].transcript + ' ';
+					input = (input + transcriptAcc).trim();
+					transcriptAcc = '';
+				}
+			}
+		};
+		recognition.onend = () => {
+			isListening = false;
+			if (transcriptAcc) input = (input + transcriptAcc).trim();
+		};
+		recognition.onerror = (event: { error: string }) => {
+			isListening = false;
+			if (event.error !== 'aborted') {
+				voiceError =
+					event.error === 'not-allowed'
+						? 'Microphone access was denied.'
+						: `Speech recognition error: ${event.error}`;
+			}
+		};
+		usedVoiceThisTurn = true;
+		recognition.start();
+	}
+
 	async function processInput() {
 		if (!input.trim()) return;
 
@@ -61,14 +123,15 @@
 		pendingAction = null;
 
 		try {
-			const response = await fetch('/api/quick-edit', {
+			const response = await fetch('/api/agent/chat', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					prompt: input,
-					context: 'modal'
+					context: usedVoiceThisTurn ? 'voice' : 'modal',
+					...(sessionId ? { session_id: sessionId } : {})
 				})
 			});
 
@@ -79,12 +142,12 @@
 				return;
 			}
 
+			usedVoiceThisTurn = false;
+			if (data.session_id) sessionId = data.session_id;
 			if (data.action && data.action_id) {
-				// Action requires confirmation
 				pendingAction = data.action;
 				actionId = data.action_id;
 			} else if (data.message) {
-				// Text response from LLM
 				responseMessage = data.message;
 				input = '';
 			}
@@ -103,7 +166,7 @@
 		errorMessage = '';
 
 		try {
-			const response = await fetch('/api/quick-edit/confirm', {
+			const response = await fetch('/api/agent/actions/confirm', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -245,6 +308,12 @@
 				/>
 			{:else}
 				<!-- Error messages -->
+				{#if voiceError}
+					<p class="mb-2 text-sm text-amber-600 dark:text-amber-400">{voiceError}</p>
+				{/if}
+				{#if isListening}
+					<p class="mb-2 text-sm font-medium text-blue-600 dark:text-blue-400">Listening…</p>
+				{/if}
 				{#if errorMessage}
 					<div class="scrollbar-hidden mb-4 flex max-h-[50vh] items-start gap-3 overflow-y-auto">
 						<div
@@ -285,15 +354,33 @@
 					</div>
 				{/if}
 				<!-- Input area -->
-				<textarea
-					bind:this={textareaElement}
-					bind:value={input}
-					rows={4}
-					placeholder="e.g. 'Add my 2015 Honda Civic with 85,000 km' or 'Schedule an oil change on the bike every 3000 km'"
-					class="text-md w-full resize-none rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-sm transition-colors focus:border-blue-500 focus:ring focus:ring-blue-500 lg:text-lg dark:border-gray-700 dark:bg-gray-800"
-					onkeydown={handleKeyDown}
-					disabled={isProcessing}
-				></textarea>
+				<div class="relative">
+					<textarea
+						bind:this={textareaElement}
+						bind:value={input}
+						rows={4}
+						placeholder="e.g. 'Add my 2015 Honda Civic with 85,000 km' or 'Schedule an oil change on the bike every 3000 km'"
+						class="text-md w-full resize-none rounded-2xl border border-gray-200 bg-white px-6 py-4 pr-12 shadow-sm transition-colors focus:border-blue-500 focus:ring focus:ring-blue-500 lg:text-lg dark:border-gray-700 dark:bg-gray-800"
+						onkeydown={handleKeyDown}
+						disabled={isProcessing}
+					></textarea>
+					<button
+						type="button"
+						aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+						title={isListening ? 'Stop listening' : 'Voice input'}
+						disabled={isProcessing}
+						class="absolute right-3 top-3 rounded-full p-2 transition-colors {isListening
+							? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+						onclick={startVoiceInput}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 256 256">
+							<path
+								d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176Zm-16-64a16,16,0,0,1,32,0v64a16,16,0,0,1-32,0Zm88,48v16a72,72,0,0,1-144,0V160a8,8,0,0,0-16,0v16a88,88,0,0,0,176,0V160A8,8,0,0,0,200,160Z"
+							></path>
+						</svg>
+					</button>
+				</div>
 
 				<div class="mt-6 flex justify-between">
 					<button

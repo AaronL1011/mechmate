@@ -271,6 +271,72 @@ export async function initializeTables(db: Kysely<Database>) {
 		.column('created_at')
 		.execute();
 
+	// Agent Pending Actions table
+	await db.schema
+		.createTable('agent_pending_actions')
+		.ifNotExists()
+		.addColumn('id', 'text', (col) => col.primaryKey())
+		.addColumn('session_id', 'text')
+		.addColumn('payload', 'text', (col) => col.notNull())
+		.addColumn('status', 'text', (col) =>
+			col.notNull().check(sql`status IN ('pending', 'confirmed', 'cancelled', 'executed')`)
+		)
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('expires_at', 'text', (col) => col.notNull())
+		.execute();
+
+	await db.schema
+		.createIndex('idx_agent_pending_actions_status')
+		.ifNotExists()
+		.on('agent_pending_actions')
+		.column('status')
+		.execute();
+	await db.schema
+		.createIndex('idx_agent_pending_actions_expires_at')
+		.ifNotExists()
+		.on('agent_pending_actions')
+		.column('expires_at')
+		.execute();
+
+	// Agent Sessions table
+	await db.schema
+		.createTable('agent_sessions')
+		.ifNotExists()
+		.addColumn('id', 'text', (col) => col.primaryKey())
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('updated_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addColumn('source', 'text', (col) => col.notNull().defaultTo('chat'))
+		.execute();
+
+	// Agent Turns table
+	await db.schema
+		.createTable('agent_turns')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('session_id', 'text', (col) => col.notNull())
+		.addColumn('role', 'text', (col) => col.notNull())
+		.addColumn('content', 'text', (col) => col.notNull().defaultTo(''))
+		.addColumn('tool_calls', 'text')
+		.addColumn('tool_call_id', 'text')
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.execute();
+
+	await db.schema
+		.createIndex('idx_agent_turns_session_id')
+		.ifNotExists()
+		.on('agent_turns')
+		.column('session_id')
+		.execute();
+
+	// Proactive suggestions table
+	await db.schema
+		.createTable('proactive_suggestions')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('result', 'text', (col) => col.notNull())
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.execute();
+
 	// Instance metadata table for deployment tracking
 	await db.schema
 		.createTable('instance_metadata')
@@ -308,9 +374,16 @@ export async function initializeTables(db: Kysely<Database>) {
 		.column('created_at')
 		.execute();
 
+	await addColumnIfNotExists(db, 'equipment', 'location', 'text', '');
 	// Add future-proofing user_id columns to core tables (defaulting to 'default_user' for single-user mode)
 	await addColumnIfNotExists(db, 'equipment', 'user_id', 'text', 'default_user');
 	await addColumnIfNotExists(db, 'tasks', 'user_id', 'text', 'default_user');
+	try {
+		await db.selectFrom('tasks').select('remind_days_before').limit(1).execute();
+	} catch {
+		console.log('Adding remind_days_before column to tasks table');
+		await db.schema.alterTable('tasks').addColumn('remind_days_before', 'integer').execute();
+	}
 	await addColumnIfNotExists(db, 'maintenance_logs', 'user_id', 'text', 'default_user');
 	await addColumnIfNotExists(db, 'notification_subscriptions', 'user_id', 'text', 'default_user');
 }

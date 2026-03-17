@@ -4,6 +4,8 @@ import type {
 	Task,
 	TaskType,
 	MaintenanceLog,
+	MaintenanceLogAttachment,
+	NewMaintenanceLogAttachment,
 	TaskWithDetails,
 	DashboardStats,
 	CreateEquipmentRequest,
@@ -205,6 +207,79 @@ export const equipmentRepository = {
 		return db.selectFrom('equipment').selectAll().where('id', '=', id).executeTakeFirst();
 	},
 
+	getNextDueSummary: async (
+		db: Kysely<Database>,
+		equipmentId: number
+	): Promise<{
+		next_due_date: string | null;
+		next_due_task_id: number | null;
+		next_due_task_title: string | null;
+		next_due_usage_value: number | null;
+	} | null> => {
+		const task = await db
+			.selectFrom('tasks')
+			.select(['id', 'title', 'next_due_date', 'next_due_usage_value'])
+			.where('equipment_id', '=', equipmentId)
+			.where('status', '=', 'pending')
+			.orderBy('next_due_date', 'asc')
+			.orderBy('next_due_usage_value', 'asc')
+			.limit(1)
+			.executeTakeFirst();
+		if (!task) return null;
+		return {
+			next_due_date: task.next_due_date ?? null,
+			next_due_task_id: task.id,
+			next_due_task_title: task.title,
+			next_due_usage_value: task.next_due_usage_value ?? null
+		};
+	},
+
+	getNextDueSummaryForEquipmentIds: async (
+		db: Kysely<Database>,
+		equipmentIds: number[]
+	): Promise<
+		Map<
+			number,
+			{
+				next_due_date: string | null;
+				next_due_task_id: number | null;
+				next_due_task_title: string | null;
+				next_due_usage_value: number | null;
+			}
+		>
+	> => {
+		if (equipmentIds.length === 0) return new Map();
+		const tasks = await db
+			.selectFrom('tasks')
+			.select(['equipment_id', 'id', 'title', 'next_due_date', 'next_due_usage_value'])
+			.where('equipment_id', 'in', equipmentIds)
+			.where('status', '=', 'pending')
+			.orderBy('equipment_id')
+			.orderBy('next_due_date', 'asc')
+			.orderBy('next_due_usage_value', 'asc')
+			.execute();
+		const map = new Map<
+			number,
+			{
+				next_due_date: string | null;
+				next_due_task_id: number | null;
+				next_due_task_title: string | null;
+				next_due_usage_value: number | null;
+			}
+		>();
+		for (const t of tasks) {
+			if (!map.has(t.equipment_id)) {
+				map.set(t.equipment_id, {
+					next_due_date: t.next_due_date ?? null,
+					next_due_task_id: t.id,
+					next_due_task_title: t.title,
+					next_due_usage_value: t.next_due_usage_value ?? null
+				});
+			}
+		}
+		return map;
+	},
+
 	create: async (db: Kysely<Database>, equipment: CreateEquipmentRequest): Promise<Equipment> => {
 		const newEquipment: NewEquipment = {
 			name: equipment.name,
@@ -217,7 +292,8 @@ export const equipmentRepository = {
 			current_usage_value: equipment.current_usage_value,
 			usage_unit: equipment.usage_unit,
 			metadata: equipment.metadata ? JSON.stringify(equipment.metadata) : undefined,
-			tags: equipment.tags ? JSON.stringify(equipment.tags) : undefined
+			tags: equipment.tags ? JSON.stringify(equipment.tags) : undefined,
+			location: equipment.location ?? undefined
 		};
 
 		const result = await db
@@ -249,6 +325,7 @@ export const equipmentRepository = {
 		if (updates.usage_unit !== undefined) updateData.usage_unit = updates.usage_unit;
 		if (updates.metadata !== undefined) updateData.metadata = JSON.stringify(updates.metadata);
 		if (updates.tags !== undefined) updateData.tags = JSON.stringify(updates.tags);
+		if (updates.location !== undefined) updateData.location = updates.location;
 
 		const result = await db
 			.updateTable('equipment')
@@ -265,6 +342,24 @@ export const equipmentRepository = {
 		return result.length > 0;
 	}
 };
+
+export async function getTotalCostByEquipmentIds(
+	db: Kysely<Database>,
+	equipmentIds: number[]
+): Promise<Map<number, number>> {
+	if (equipmentIds.length === 0) return new Map();
+	const rows = await db
+		.selectFrom('maintenance_logs')
+		.select(['equipment_id', db.fn.coalesce(db.fn.sum('cost'), sql<number>`0`).as('total')])
+		.where('equipment_id', 'in', equipmentIds)
+		.groupBy('equipment_id')
+		.execute();
+	const map = new Map<number, number>();
+	for (const row of rows) {
+		map.set(row.equipment_id, Number(row.total));
+	}
+	return map;
+}
 
 // Equipment Type Repository
 export const equipmentTypeRepository = {
@@ -346,6 +441,7 @@ export const taskRepository = {
 			next_due_date: task.next_due_date,
 			priority: task.priority,
 			status: task.status,
+			remind_days_before: (task as Record<string, unknown>).remind_days_before as Task['remind_days_before'],
 			created_at: task.created_at,
 			updated_at: task.updated_at
 		};
@@ -364,6 +460,7 @@ export const taskRepository = {
 			usage_unit: task.usage_unit,
 			metadata: task.metadata,
 			tags: task.tags,
+			location: (task as Record<string, unknown>).location as Equipment['location'],
 			created_at: task.created_at,
 			updated_at: task.updated_at
 		};
@@ -432,12 +529,52 @@ export const taskRepository = {
 			.execute();
 	},
 
+	getDueSoon: async (
+		db: Kysely<Database>,
+		days: number = 7
+	): Promise<(Task & { equipment_name: string })[]> => {
+		const today = new Date().toISOString().split('T')[0];
+		const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		const rows = await db
+			.selectFrom('tasks')
+			.innerJoin('equipment', 'tasks.equipment_id', 'equipment.id')
+			.selectAll('tasks')
+			.select('equipment.name as equipment_name')
+			.where('tasks.status', '=', 'pending')
+			.where((eb) =>
+				eb.or([
+					eb.and([
+						eb('tasks.next_due_date', 'is not', null),
+						eb('tasks.next_due_date', '>=', today),
+						eb('tasks.next_due_date', '<=', endDate)
+					]),
+					eb.and([
+						eb('tasks.next_due_usage_value', 'is not', null),
+						eb('tasks.next_due_usage_value', '<=', eb.ref('equipment.current_usage_value'))
+					])
+				])
+			)
+			.orderBy('tasks.next_due_date')
+			.orderBy('tasks.next_due_usage_value')
+			.execute();
+		return rows as (Task & { equipment_name: string })[];
+	},
+
 	create: async (db: Kysely<Database>, task: CreateTaskRequest): Promise<Task> => {
 		const nextDueDate = task.time_interval_days
 			? new Date(Date.now() + task.time_interval_days * 24 * 60 * 60 * 1000)
 					.toISOString()
 					.split('T')[0]
 			: undefined;
+
+		let nextDueUsageValue: number | undefined;
+		if (task.usage_interval != null && task.time_interval_days == null) {
+			const equipment = await equipmentRepository.getById(db, task.equipment_id);
+			if (equipment) {
+				nextDueUsageValue = equipment.current_usage_value + task.usage_interval;
+			}
+		}
+
 		const newTask: NewTask = {
 			equipment_id: task.equipment_id,
 			task_type_id: task.task_type_id,
@@ -447,7 +584,8 @@ export const taskRepository = {
 			time_interval_days: task.time_interval_days,
 			priority: task.priority || 'medium',
 			status: 'pending',
-			next_due_date: nextDueDate
+			next_due_date: nextDueDate,
+			next_due_usage_value: nextDueUsageValue
 		};
 
 		const result = await db
@@ -473,6 +611,8 @@ export const taskRepository = {
 			updateData.time_interval_days = updates.time_interval_days;
 		if (updates.priority !== undefined) updateData.priority = updates.priority;
 		if (updates.status !== undefined) updateData.status = updates.status;
+		if (updates.remind_days_before !== undefined)
+			updateData.remind_days_before = updates.remind_days_before;
 		if (updates.next_due_date !== undefined) updateData.next_due_date = updates.next_due_date;
 		if (updates.next_due_usage_value !== undefined)
 			updateData.next_due_usage_value = updates.next_due_usage_value;
@@ -564,6 +704,94 @@ export const maintenanceLogRepository = {
 			.executeTakeFirstOrThrow();
 
 		return result;
+	},
+
+	getAllForExport: async (
+		db: Kysely<Database>,
+		startDate?: string,
+		endDate?: string
+	): Promise<
+		(Partial<MaintenanceLog> & { equipment_name: string; task_title: string })[]
+	> => {
+		let query = db
+			.selectFrom('maintenance_logs')
+			.innerJoin('equipment', 'maintenance_logs.equipment_id', 'equipment.id')
+			.innerJoin('tasks', 'maintenance_logs.task_id', 'tasks.id')
+			.select([
+				'maintenance_logs.id',
+				'maintenance_logs.completed_date',
+				'maintenance_logs.completed_usage_value',
+				'maintenance_logs.notes',
+				'maintenance_logs.cost',
+				'maintenance_logs.service_provider',
+				'maintenance_logs.parts_used',
+				'equipment.name as equipment_name',
+				'tasks.title as task_title'
+			])
+			.orderBy('maintenance_logs.completed_date', 'desc');
+		if (startDate) query = query.where('maintenance_logs.completed_date', '>=', startDate);
+		if (endDate) query = query.where('maintenance_logs.completed_date', '<=', endDate);
+		return query.execute() as Promise<
+			(Partial<MaintenanceLog> & { equipment_name: string; task_title: string })[]
+		>;
+	},
+
+	getCostSummaryByEquipment: async (
+		db: Kysely<Database>,
+		equipmentId: number,
+		startDate?: string,
+		endDate?: string
+	): Promise<{ total_cost: number }> => {
+		let query = db
+			.selectFrom('maintenance_logs')
+			.select(db.fn.coalesce(db.fn.sum('cost'), sql<number>`0`).as('total_cost'))
+			.where('equipment_id', '=', equipmentId);
+		if (startDate) query = query.where('completed_date', '>=', startDate);
+		if (endDate) query = query.where('completed_date', '<=', endDate);
+		const row = await query.executeTakeFirstOrThrow();
+		return { total_cost: Number(row.total_cost) };
+	}
+};
+
+// Maintenance Log Attachments Repository
+export const maintenanceLogAttachmentRepository = {
+	getByLogId: (db: Kysely<Database>, maintenanceLogId: number): Promise<MaintenanceLogAttachment[]> => {
+		return db
+			.selectFrom('maintenance_log_attachments')
+			.selectAll()
+			.where('maintenance_log_id', '=', maintenanceLogId)
+			.orderBy('created_at', 'desc')
+			.execute();
+	},
+
+	getById: (
+		db: Kysely<Database>,
+		id: number
+	): Promise<MaintenanceLogAttachment | undefined> => {
+		return db
+			.selectFrom('maintenance_log_attachments')
+			.selectAll()
+			.where('id', '=', id)
+			.executeTakeFirst();
+	},
+
+	create: async (
+		db: Kysely<Database>,
+		attachment: NewMaintenanceLogAttachment
+	): Promise<MaintenanceLogAttachment> => {
+		return db
+			.insertInto('maintenance_log_attachments')
+			.values(attachment)
+			.returningAll()
+			.executeTakeFirstOrThrow();
+	},
+
+	delete: async (db: Kysely<Database>, id: number): Promise<boolean> => {
+		const result = await db
+			.deleteFrom('maintenance_log_attachments')
+			.where('id', '=', id)
+			.execute();
+		return result.length > 0;
 	}
 };
 

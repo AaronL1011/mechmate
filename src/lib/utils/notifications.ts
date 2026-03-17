@@ -267,7 +267,7 @@ export class NotificationService {
 	}
 
 	private async shouldSendNotification(
-		task: Task,
+		task: Task & { remind_days_before?: number | null },
 		thresholdType: ThresholdType,
 		thresholdDays: number,
 		today: Date
@@ -277,12 +277,13 @@ export class NotificationService {
 		const dueDate = new Date(task.next_due_date);
 		const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-		// Check if this matches our threshold
+		const effectiveDays = task.remind_days_before ?? thresholdDays;
+
 		let matches = false;
 		if (thresholdType === THRESHOLD_TYPES.OVERDUE_DAILY) {
-			matches = daysDiff < 0; // Any overdue task
+			matches = daysDiff < 0;
 		} else {
-			matches = daysDiff === thresholdDays;
+			matches = daysDiff === effectiveDays;
 		}
 
 		if (!matches) return false;

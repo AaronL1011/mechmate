@@ -223,11 +223,36 @@
 														>Current usage: {equipmentItem.current_usage_value}
 														{equipmentItem.usage_unit}</span
 													>
+													<span>•</span>
+													<span
+														>Total spent: ${(
+															(equipmentItem as { total_cost?: number }).total_cost ?? 0
+														).toFixed(2)}</span
+													>
+													{#if (equipmentItem as { next_due_summary?: { next_due_task_title: string; next_due_date?: string | null; next_due_usage_value?: number | null } }).next_due_summary}
+														{@const next = (equipmentItem as { next_due_summary?: { next_due_task_title: string; next_due_date?: string | null; next_due_usage_value?: number | null } }).next_due_summary}
+														{#if next}
+															<span>•</span>
+															<span>
+																Next: {next.next_due_task_title}
+																{#if next.next_due_date}
+																	due {formatDate(next.next_due_date)}
+																{:else if next.next_due_usage_value != null}
+																	at {next.next_due_usage_value} {equipmentItem.usage_unit}
+																{/if}
+															</span>
+														{/if}
+													{/if}
 													{#if equipmentItem.purchase_date}
 														<span>•</span>
 														<span>Purchased: {formatDate(equipmentItem.purchase_date)}</span>
 													{/if}
 												</div>
+												{#if (equipmentItem as { location?: string | null }).location}
+													<p class="mt-1 text-xs text-gray-500 lg:text-sm dark:text-gray-400">
+														Location: {(equipmentItem as { location?: string | null }).location}
+													</p>
+												{/if}
 												{#if equipmentItem.serial_number}
 													<p class="mt-1 text-xs text-gray-500 lg:text-sm dark:text-gray-400">
 														Serial: {equipmentItem.serial_number}

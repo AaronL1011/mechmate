@@ -32,6 +32,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const maintenanceLog = await maintenanceLogRepository.create(locals.db, {
 			task_id: body.task_id,
 			equipment_id: task.equipment_id,
+			user_id: task.user_id,
 			completed_date: body.completed_date,
 			completed_usage_value: body.completed_usage_value,
 			notes: body.notes,

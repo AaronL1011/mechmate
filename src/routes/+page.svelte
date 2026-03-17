@@ -34,6 +34,8 @@
 	let showCompleteTaskModal = $state(false);
 	let showMechAssistant = $state(false);
 	let selectedTask: Task | null = $state(null);
+	let dueSoonTasks: (Task & { equipment_name?: string })[] = $state([]);
+	let proactiveSuggestion: { result: string; created_at: string } | null = $state(null);
 	let showDropdown = $state(false);
 
 	const priorityColors = {
@@ -167,15 +169,16 @@
 	async function loadData() {
 		try {
 			loading = true;
-			const [statsRes, tasksRes, equipmentRes, taskTypesRes, equipmentTypesRes] = await Promise.all(
-				[
+			const [statsRes, tasksRes, equipmentRes, taskTypesRes, equipmentTypesRes, dueSoonRes, suggestionsRes] =
+				await Promise.all([
 					fetch('/api/dashboard'),
 					fetch('/api/tasks?type=upcoming'),
 					fetch('/api/equipment'),
 					fetch('/api/task-types'),
-					fetch('/api/equipment-types')
-				]
-			);
+					fetch('/api/equipment-types'),
+					fetch('/api/dashboard/due-soon?days=7'),
+					fetch('/api/agent/suggestions')
+				]);
 
 			if (
 				!statsRes.ok ||
@@ -192,6 +195,8 @@
 			equipment = await equipmentRes.json();
 			taskTypes = await taskTypesRes.json();
 			equipmentTypes = await equipmentTypesRes.json();
+			dueSoonTasks = dueSoonRes.ok ? await dueSoonRes.json() : [];
+			proactiveSuggestion = suggestionsRes.ok ? await suggestionsRes.json() : null;
 		} catch (err) {
 			error = 'Failed to load dashboard data';
 			console.error(err);
@@ -492,6 +497,16 @@
 										Add Equipment
 									</button>
 								</div>
+								<div class="border-t border-gray-100 dark:border-gray-700">
+									<a
+										href="/api/maintenance-logs/export"
+										download
+										class="flex w-full items-center gap-2 px-6 py-4 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+										onclick={() => (showDropdown = false)}
+									>
+										Export maintenance logs (CSV)
+									</a>
+								</div>
 							</div>
 						{/if}
 					</div>
@@ -650,6 +665,52 @@
 								</a>
 							</div>
 						</div>
+					</div>
+				</div>
+			{/if}
+
+			{#if dueSoonTasks.length > 0}
+				<div class="mb-8 rounded-lg bg-white p-4 shadow dark:bg-gray-800 dark:shadow-gray-900/20">
+					<h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Due this week</h2>
+					<ul class="space-y-2">
+						{#each dueSoonTasks as task (task.id)}
+							<li
+								class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 py-2 px-3 dark:border-gray-700"
+							>
+								<span class="text-sm text-gray-700 dark:text-gray-300">
+									{task.title}
+									{#if task.equipment_name}
+										<span class="text-gray-500 dark:text-gray-400"> · {task.equipment_name}</span>
+									{/if}
+									{#if task.next_due_date}
+										<span class="text-gray-500 dark:text-gray-400">
+											· due {new Date(task.next_due_date).toLocaleDateString()}
+										</span>
+									{/if}
+								</span>
+								<button
+									type="button"
+									class="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+									onclick={() => openCompleteTaskModal(task)}
+								>
+									Complete
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+
+			{#if proactiveSuggestion}
+				<div class="mb-8 rounded-lg bg-white p-4 shadow dark:bg-gray-800 dark:shadow-gray-900/20">
+					<h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Mech suggests</h2>
+					<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+						Generated at {new Date(proactiveSuggestion.created_at).toLocaleString()}
+					</p>
+					<div
+						class="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700 dark:prose-invert dark:text-gray-300"
+					>
+						{proactiveSuggestion.result}
 					</div>
 				</div>
 			{/if}

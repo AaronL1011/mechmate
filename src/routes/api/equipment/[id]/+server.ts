@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { equipmentRepository } from '$lib/repositories.js';
+import { equipmentRepository, maintenanceLogRepository } from '$lib/repositories.js';
 import type { UpdateEquipmentRequest } from '$lib/types/db.js';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -19,7 +19,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return json({ error: 'Equipment not found' }, { status: 404 });
 		}
 
-		return json(equipment);
+		const [costSummary, nextDueSummary] = await Promise.all([
+			maintenanceLogRepository.getCostSummaryByEquipment(locals.db, id),
+			equipmentRepository.getNextDueSummary(locals.db, id)
+		]);
+		return json({
+			...equipment,
+			total_cost: costSummary.total_cost,
+			next_due_summary: nextDueSummary
+		});
 	} catch (error) {
 		console.error('Error fetching equipment:', error);
 		return json({ error: 'Failed to fetch equipment' }, { status: 500 });

@@ -20,6 +20,7 @@
 		time_interval_days: undefined,
 		priority: 'medium',
 		status: 'pending',
+		remind_days_before: undefined as number | null | undefined,
 		next_due_date: '',
 		next_due_usage_value: undefined,
 		last_completed_date: '',
@@ -38,6 +39,7 @@
 				time_interval_days: task.time_interval_days,
 				priority: task.priority,
 				status: task.status,
+				remind_days_before: (task as Task & { remind_days_before?: number | null }).remind_days_before ?? undefined,
 				next_due_date: task.next_due_date || '',
 				next_due_usage_value: task.next_due_usage_value,
 				last_completed_date: task.last_completed_date || '',
@@ -205,6 +207,26 @@
 							<option value="completed">Completed</option>
 							<option value="overdue">Overdue</option>
 						</select>
+					</div>
+
+					<div>
+						<label
+							for="remind_days_before"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>Remind me (days before due)</label
+						>
+						<input
+							type="number"
+							id="remind_days_before"
+							bind:value={formData.remind_days_before}
+							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+							placeholder="Use global settings"
+							min="0"
+							step="1"
+						/>
+						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+							Leave empty to use notification settings. Set a number to get a reminder that many days before due.
+						</p>
 					</div>
 
 					<div class="grid grid-cols-2 gap-4">

@@ -32,6 +32,10 @@
 	let loading = $state(false);
 	let error = $state('');
 	let newPart = $state('');
+	let completedLogId = $state<number | null>(null);
+	let attachmentFile = $state<File | null>(null);
+	let attachmentUploading = $state(false);
+	let attachmentError = $state('');
 
 	$effect(() => {
 		if (task) {
@@ -86,8 +90,9 @@
 			}
 
 			const result = await response.json();
+			completedLogId = result.maintenance_log?.id ?? null;
 			taskCompleted(result);
-			closeModal();
+			if (!completedLogId) closeModal();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to complete task';
 		} finally {
@@ -97,7 +102,9 @@
 
 	function closeModal() {
 		isOpen = false;
-		// Reset form
+		completedLogId = null;
+		attachmentFile = null;
+		attachmentError = '';
 		formData = {
 			task_id: 0,
 			completed_date: new Date().toISOString().split('T')[0],
@@ -110,6 +117,29 @@
 		error = '';
 		newPart = '';
 		onCloseModal();
+	}
+
+	async function uploadAttachment() {
+		if (!completedLogId || !attachmentFile) return;
+		attachmentUploading = true;
+		attachmentError = '';
+		try {
+			const formData = new FormData();
+			formData.set('file', attachmentFile);
+			const res = await fetch(`/api/maintenance-logs/${completedLogId}/attachments`, {
+				method: 'POST',
+				body: formData
+			});
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Upload failed');
+			}
+			attachmentFile = null;
+		} catch (err) {
+			attachmentError = err instanceof Error ? err.message : 'Upload failed';
+		} finally {
+			attachmentUploading = false;
+		}
 	}
 
 	function handleBackdropClick(event: MouseEvent) {
@@ -151,6 +181,41 @@
 					</button>
 				</div>
 
+				{#if completedLogId}
+					<!-- Post-completion: optional attachments -->
+					<div class="space-y-4">
+						<p class="text-sm font-medium text-green-700 dark:text-green-400">Task completed.</p>
+						<p class="text-sm text-gray-600 dark:text-gray-400">Add an attachment (optional)</p>
+						{#if attachmentError}
+							<p class="text-sm text-red-600 dark:text-red-400">{attachmentError}</p>
+						{/if}
+						<div class="flex flex-wrap items-center gap-2">
+							<input
+								type="file"
+								accept="image/*,.pdf"
+								onchange={(e) => {
+									attachmentFile = e.currentTarget.files?.[0] ?? null;
+								}}
+								class="text-sm text-gray-600 dark:text-gray-400"
+							/>
+							<button
+								type="button"
+								disabled={!attachmentFile || attachmentUploading}
+								onclick={uploadAttachment}
+								class="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+							>
+								{attachmentUploading ? 'Uploading...' : 'Upload'}
+							</button>
+						</div>
+						<button
+							type="button"
+							onclick={closeModal}
+							class="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+						>
+							Done
+						</button>
+					</div>
+				{:else}
 				<!-- Task Info -->
 				<div class="mb-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
 					<h4 class="font-medium text-gray-900 dark:text-white">{task.title}</h4>
@@ -329,6 +394,7 @@
 						</button>
 					</div>
 				</form>
+				{/if}
 			</div>
 		</div>
 	</div>

@@ -27,6 +27,7 @@
 		year: undefined,
 		serial_number: '',
 		purchase_date: '',
+		location: '',
 		current_usage_value: 0,
 		usage_unit: '',
 		metadata: {},
@@ -80,6 +81,7 @@
 			year: undefined,
 			serial_number: '',
 			purchase_date: '',
+			location: '',
 			current_usage_value: 0,
 			usage_unit: '',
 			metadata: {},
@@ -253,6 +255,21 @@
 							id="purchase_date"
 							bind:value={formData.purchase_date}
 							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+						/>
+					</div>
+
+					<div>
+						<label
+							for="location"
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>Location</label
+						>
+						<input
+							type="text"
+							id="location"
+							bind:value={formData.location}
+							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+							placeholder="e.g. Garage, Shed"
 						/>
 					</div>
 
