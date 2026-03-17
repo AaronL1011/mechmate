@@ -57,7 +57,9 @@
 	let audioContext: AudioContext | null = $state(null);
 	let analyserNode: AnalyserNode | null = $state(null);
 	let waveformAnimationId = $state<number | null>(null);
-	let transcriptAcc = $state('');
+	let interimTranscript = $state('');
+	let shouldBeListening = false;
+	let recognitionRestartTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const hasSpeechRecognition =
 		typeof window !== 'undefined' &&
@@ -193,6 +195,105 @@
 		voiceState = 'denied';
 	}
 
+	function clearRestartTimer() {
+		if (recognitionRestartTimer !== null) {
+			clearTimeout(recognitionRestartTimer);
+			recognitionRestartTimer = null;
+		}
+	}
+
+	function stopRecognition() {
+		clearRestartTimer();
+		if (recognitionInstance) {
+			try {
+				recognitionInstance.abort();
+			} catch {
+				try {
+					recognitionInstance.stop();
+				} catch {}
+			}
+			recognitionInstance = null;
+		}
+	}
+
+	// Creates a fresh SpeechRecognition instance and starts it. Called on initial
+	// start and on every auto-restart triggered by onend (Chrome mobile fires onend
+	// after each utterance even with continuous:true, so we restart to simulate
+	// true continuous listening).
+	function createAndStartRecognition(): void {
+		clearRestartTimer();
+
+		const Win = window as unknown as {
+			SpeechRecognition?: new () => SpeechRecognitionInstance;
+			webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+		};
+		const Recognition = Win.SpeechRecognition || Win.webkitSpeechRecognition;
+		if (!Recognition) return;
+
+		const recognition = new Recognition() as SpeechRecognitionInstance;
+		recognitionInstance = recognition;
+		recognition.continuous = true;
+		recognition.interimResults = true;
+		recognition.lang = 'en-US';
+
+		recognition.onresult = (event: SpeechResult) => {
+			let interim = '';
+			for (let i = event.resultIndex; i < event.results.length; i++) {
+				const item = event.results[i];
+				if (item.isFinal && item[0]) {
+					input = input ? `${input} ${item[0].transcript}`.trim() : item[0].transcript.trim();
+					interim = '';
+				} else if (item[0]) {
+					interim += item[0].transcript;
+				}
+			}
+			interimTranscript = interim;
+		};
+
+		recognition.onerror = (event: { error: string }) => {
+			if (event.error === 'aborted' || event.error === 'no-speech') return;
+			if (event.error === 'not-allowed') {
+				shouldBeListening = false;
+				setVoiceError(
+					'Microphone access was denied. Allow microphone for this site in your browser settings and try again.'
+				);
+				releaseMicrophone();
+				stopWaveform();
+				recognitionInstance = null;
+				return;
+			}
+			voiceError = `Speech error: ${event.error}. Tap Resume to try again.`;
+		};
+
+		recognition.onend = () => {
+			// Commit any in-flight interim text before the session closes.
+			if (interimTranscript) {
+				input = input ? `${input} ${interimTranscript}`.trim() : interimTranscript.trim();
+				interimTranscript = '';
+			}
+			recognitionInstance = null;
+
+			if (shouldBeListening && mediaStream) {
+				// Chrome mobile fires onend after every utterance even with continuous:true.
+				// Auto-restart to maintain the illusion of continuous recording.
+				recognitionRestartTimer = setTimeout(() => {
+					if (shouldBeListening && mediaStream) createAndStartRecognition();
+				}, 150);
+			} else {
+				voiceState = 'paused';
+			}
+		};
+
+		try {
+			recognition.start();
+		} catch {
+			// start() can throw InvalidStateError if called too soon after a stop.
+			recognitionRestartTimer = setTimeout(() => {
+				if (shouldBeListening && mediaStream) createAndStartRecognition();
+			}, 500);
+		}
+	}
+
 	function startVoiceInput() {
 		voiceError = null;
 		if (typeof window !== 'undefined' && !window.isSecureContext) {
@@ -208,26 +309,17 @@
 			return;
 		}
 
+		shouldBeListening = true;
 		voiceState = 'requesting';
 
 		navigator.mediaDevices
 			.getUserMedia({ audio: true })
 			.then((stream) => {
-				if (voiceState !== 'requesting') {
+				if (!shouldBeListening) {
 					stream.getTracks().forEach((t) => t.stop());
 					return;
 				}
 				mediaStream = stream;
-				const Win = window as unknown as {
-					SpeechRecognition?: new () => SpeechRecognitionInstance;
-					webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
-				};
-				const Recognition = Win.SpeechRecognition || Win.webkitSpeechRecognition;
-				if (!Recognition) {
-					releaseMicrophone();
-					setVoiceError('Speech recognition is not available.');
-					return;
-				}
 
 				const actx = new AudioContext();
 				audioContext = actx;
@@ -237,57 +329,12 @@
 				source.connect(analyser);
 				analyserNode = analyser;
 
-				const recognition = new Recognition() as SpeechRecognitionInstance;
-				recognitionInstance = recognition;
-				recognition.continuous = true;
-				recognition.interimResults = true;
-				recognition.lang = 'en-US';
-
-				recognition.onresult = (event: SpeechResult) => {
-					for (let i = event.resultIndex; i < event.results.length; i++) {
-						const item = event.results[i];
-						if (item.isFinal && item[0]) {
-							transcriptAcc = transcriptAcc + item[0].transcript + ' ';
-							input = (input + transcriptAcc).trim();
-							transcriptAcc = '';
-						}
-					}
-				};
-
-				recognition.onend = () => {
-					if (transcriptAcc) {
-						input = (input + transcriptAcc).trim();
-						transcriptAcc = '';
-					}
-					if (voiceState === 'listening' || voiceState === 'requesting') {
-						voiceState = 'paused';
-					}
-				};
-
-				recognition.onerror = (event: { error: string }) => {
-					if (event.error === 'aborted') return;
-					if (event.error === 'not-allowed') {
-						setVoiceError(
-							'Microphone access was denied. Allow microphone for this site in your browser settings and try again.'
-						);
-						releaseMicrophone();
-						stopWaveform();
-						recognitionInstance = null;
-						return;
-					}
-					if (event.error === 'no-speech') {
-						voiceState = 'paused';
-						return;
-					}
-					voiceError = `Speech error: ${event.error}. Try again or type instead.`;
-					voiceState = 'paused';
-				};
-
 				usedVoiceThisTurn = true;
 				voiceState = 'listening';
-				recognition.start();
+				createAndStartRecognition();
 			})
 			.catch((err: unknown) => {
+				shouldBeListening = false;
 				voiceState = 'idle';
 				const name = err instanceof Error ? err.name : '';
 				const message = err instanceof Error ? err.message : String(err);
@@ -308,46 +355,37 @@
 	}
 
 	function pauseVoice() {
-		if (recognitionInstance && (voiceState === 'listening' || voiceState === 'requesting')) {
-			recognitionInstance.stop();
-			voiceState = 'paused';
-		}
+		shouldBeListening = false;
+		interimTranscript = '';
+		stopRecognition();
+		voiceState = 'paused';
 	}
 
 	function resumeVoice() {
-		if (!recognitionInstance || !mediaStream) return;
+		if (!mediaStream) return;
 		voiceError = null;
+		shouldBeListening = true;
 		voiceState = 'listening';
-		recognitionInstance.start();
+		createAndStartRecognition();
 	}
 
 	function cancelVoice() {
-		if (recognitionInstance) {
-			try {
-				recognitionInstance.abort();
-			} catch {
-				recognitionInstance.stop();
-			}
-			recognitionInstance = null;
-		}
+		shouldBeListening = false;
+		interimTranscript = '';
+		stopRecognition();
 		stopWaveform();
 		releaseMicrophone();
 		voiceState = 'idle';
-		transcriptAcc = '';
 		input = '';
 	}
 
 	function sendAndCloseVoice() {
-		if (recognitionInstance) {
-			try {
-				recognitionInstance.stop();
-			} catch {}
-			recognitionInstance = null;
-		}
+		shouldBeListening = false;
+		interimTranscript = '';
+		stopRecognition();
 		stopWaveform();
 		releaseMicrophone();
 		voiceState = 'idle';
-		transcriptAcc = '';
 		if (input.trim()) processInput();
 	}
 
@@ -371,13 +409,17 @@
 	});
 
 	$effect(() => {
-		if (
-			(voiceState === 'listening' || voiceState === 'paused') &&
-			waveformCanvas &&
-			analyserNode
-		) {
+		const _state = voiceState;
+		const canvas = waveformCanvas;
+		const analyser = analyserNode;
+		if ((_state === 'listening' || _state === 'paused') && canvas && analyser) {
 			drawWaveform();
-			return () => stopWaveform();
+			return () => {
+				if (waveformAnimationId != null) {
+					cancelAnimationFrame(waveformAnimationId);
+					waveformAnimationId = null;
+				}
+			};
 		}
 	});
 
@@ -766,9 +808,11 @@
 									<p class="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500">
 										{voiceState === 'listening' ? 'Listening…' : 'Paused'}
 									</p>
-									{#if input}
+									{#if input || interimTranscript}
 										<p class="mt-0.5 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-											{input}
+											{input}{input && interimTranscript ? ' ' : ''}<span
+												class="text-gray-400 dark:text-gray-500">{interimTranscript}</span
+											>
 										</p>
 									{:else}
 										<p class="mt-0.5 text-sm italic text-gray-300 dark:text-gray-600">
@@ -805,7 +849,7 @@
 									</button>
 									<button
 										type="button"
-										disabled={!input.trim() || isProcessing}
+										disabled={!input.trim() && !interimTranscript.trim() || isProcessing}
 										onclick={sendAndCloseVoice}
 										class="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 dark:bg-blue-700 dark:hover:bg-blue-600"
 									>
