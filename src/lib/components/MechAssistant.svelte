@@ -20,9 +20,10 @@
 		| { id: string; role: 'success'; content: string }
 		| { id: string; role: 'error'; content: string };
 
+	// SpeechRecognitionEvent: resultIndex = lowest changed index; results = cumulative list (Web Speech API)
 	type SpeechResult = {
 		resultIndex: number;
-		results: Array<{ isFinal: boolean; 0: { transcript: string } }>;
+		results: Array<{ isFinal: boolean; 0?: { transcript: string } }>;
 	};
 	type SpeechRecognitionInstance = {
 		continuous: boolean;
@@ -245,14 +246,19 @@
 		recognition.lang = 'en-US';
 
 		recognition.onresult = (event: SpeechResult) => {
+			// Per Web Speech API: process only changed results (resultIndex..length)
+			// Each result: isFinal → append to accumulated input; !isFinal → replace interim display
 			let lastInterim = '';
 			for (let i = event.resultIndex; i < event.results.length; i++) {
-				const item = event.results[i];
-				if (item.isFinal && item[0]) {
-					input = input ? `${input} ${item[0].transcript}`.trim() : item[0].transcript.trim();
+				const result = event.results[i];
+				const transcript = result[0]?.transcript?.trim();
+				if (!transcript) continue;
+
+				if (result.isFinal) {
+					input = input ? `${input} ${transcript}`.trim() : transcript;
 					lastInterim = '';
-				} else if (item[0]) {
-					lastInterim = item[0].transcript;
+				} else {
+					lastInterim = transcript;
 				}
 			}
 			interimTranscript = lastInterim;
