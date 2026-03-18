@@ -427,11 +427,25 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 	}
 ];
 
+export const suggestionsFunctions: LLMFunction[] = [
+	{
+		name: 'generate_suggestions',
+		description:
+			'Run the proactive maintenance analysis and generate a fresh set of Mech suggestions visible on the dashboard. Use when the user asks to refresh or generate suggestions.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: []
+		}
+	}
+];
+
 // Combined function list
 export const allFunctions: LLMFunction[] = [
 	...equipmentFunctions,
 	...taskFunctions,
-	...maintenanceLogFunctions
+	...maintenanceLogFunctions,
+	...suggestionsFunctions
 ];
 
 // Function execution handlers
