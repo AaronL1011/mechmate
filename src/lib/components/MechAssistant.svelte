@@ -71,7 +71,15 @@
 	const hasGetUserMedia =
 		typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
-	const voiceSupported = hasSpeechRecognition && hasGetUserMedia;
+	const isMobile =
+		typeof navigator !== 'undefined' &&
+		/Android|iPhone|iPad|iPod|webOS|Mobile/i.test(navigator.userAgent);
+
+	// On mobile Chrome, getUserMedia and SpeechRecognition compete for the mic; only one works.
+	// Skip waveform (getUserMedia) on mobile so SpeechRecognition gets exclusive access.
+	const useWaveform = hasGetUserMedia && !isMobile;
+
+	const voiceSupported = hasSpeechRecognition && (hasGetUserMedia || isMobile);
 
 	marked.setOptions({ breaks: true, gfm: true });
 
@@ -273,11 +281,11 @@
 			}
 			recognitionInstance = null;
 
-			if (shouldBeListening && mediaStream) {
+			if (shouldBeListening) {
 				// Chrome mobile fires onend after every utterance even with continuous:true.
 				// Auto-restart to maintain the illusion of continuous recording.
 				recognitionRestartTimer = setTimeout(() => {
-					if (shouldBeListening && mediaStream) createAndStartRecognition();
+					if (shouldBeListening) createAndStartRecognition();
 				}, 150);
 			} else {
 				voiceState = 'paused';
@@ -289,7 +297,7 @@
 		} catch {
 			// start() can throw InvalidStateError if called too soon after a stop.
 			recognitionRestartTimer = setTimeout(() => {
-				if (shouldBeListening && mediaStream) createAndStartRecognition();
+				if (shouldBeListening) createAndStartRecognition();
 			}, 500);
 		}
 	}
@@ -311,6 +319,13 @@
 
 		shouldBeListening = true;
 		voiceState = 'requesting';
+
+		if (isMobile) {
+			usedVoiceThisTurn = true;
+			voiceState = 'listening';
+			createAndStartRecognition();
+			return;
+		}
 
 		navigator.mediaDevices
 			.getUserMedia({ audio: true })
@@ -362,7 +377,7 @@
 	}
 
 	function resumeVoice() {
-		if (!mediaStream) return;
+		if (!isMobile && !mediaStream) return;
 		voiceError = null;
 		shouldBeListening = true;
 		voiceState = 'listening';
@@ -797,12 +812,26 @@
 								class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
 							>
 								<div class="px-4 pt-3">
-									<canvas
-										bind:this={waveformCanvas}
-										class="h-12 w-full"
-										aria-hidden="true"
-										use:setupCanvas
-									></canvas>
+									{#if useWaveform}
+										<canvas
+											bind:this={waveformCanvas}
+											class="h-12 w-full"
+											aria-hidden="true"
+											use:setupCanvas
+										></canvas>
+									{:else}
+										<div
+											class="flex h-12 items-center justify-center gap-1.5"
+											aria-hidden="true"
+										>
+											{#each [0, 1, 2, 3, 4] as i}
+												<span
+													class="h-6 w-1 rounded-full bg-blue-400 animate-pulse dark:bg-blue-500"
+													style="animation-delay: {i * 80}ms"
+												></span>
+											{/each}
+										</div>
+									{/if}
 								</div>
 								<div class="px-4 pb-1 pt-1.5">
 									<p class="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500">
