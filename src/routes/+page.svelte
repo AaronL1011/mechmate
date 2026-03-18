@@ -13,6 +13,7 @@
 	import AddTaskModal from '$lib/components/AddTaskModal.svelte';
 	import CompleteTaskModal from '$lib/components/CompleteTaskModal.svelte';
 	import MechAssistant from '$lib/components/MechAssistant.svelte';
+	import ProactiveSuggestions from '$lib/components/ProactiveSuggestions.svelte';
 
 	let stats: DashboardStats | null = $state(null);
 	let upcomingTasks: Task[] = $state([]);
@@ -702,17 +703,10 @@
 			{/if}
 
 			{#if proactiveSuggestion}
-				<div class="mb-8 rounded-lg bg-white p-4 shadow dark:bg-gray-800 dark:shadow-gray-900/20">
-					<h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Mech suggests</h2>
-					<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-						Generated at {new Date(proactiveSuggestion.created_at).toLocaleString()}
-					</p>
-					<div
-						class="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700 dark:prose-invert dark:text-gray-300"
-					>
-						{proactiveSuggestion.result}
-					</div>
-				</div>
+				<ProactiveSuggestions
+					result={proactiveSuggestion.result}
+					createdAt={proactiveSuggestion.created_at}
+				/>
 			{/if}
 
 			<!-- View Mode Toggle -->
