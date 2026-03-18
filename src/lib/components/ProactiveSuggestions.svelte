@@ -109,9 +109,6 @@
 						>
 							{@html renderMarkdown(item.content) || '&#8203;'}
 						</div>
-						<p class="mt-1.5 text-xs text-amber-700/70 dark:text-amber-300/70">
-							{new Date(item.createdAt).toLocaleString()}
-						</p>
 					</div>
 					<button
 						type="button"

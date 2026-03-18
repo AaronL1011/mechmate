@@ -61,15 +61,29 @@ export async function runProactiveAgent(
 		}
 	}
 
-	const systemPrompt = getProactiveSystemPrompt(toneContext ?? '');
+	const existingRows = await db
+		.selectFrom('proactive_suggestions')
+		.select('result')
+		.where('dismissed_at', 'is', null)
+		.orderBy('id', 'desc')
+		.execute();
+
+	const existingSuggestions = existingRows.flatMap(row => {
+		try {
+			const parsed = JSON.parse(row.result) as { title?: string; content?: string };
+			if (parsed?.title && parsed?.content) {
+				return [{ title: parsed.title, content: parsed.content }];
+			}
+		} catch {
+			// malformed row — skip
+		}
+		return [];
+	});
+
+	const systemPrompt = getProactiveSystemPrompt(toneContext ?? '', existingSuggestions);
 	const executor = new FunctionExecutor({ db });
 	const messages: LLMMessage[] = [
 		{ role: 'system', content: systemPrompt },
-		{
-			role: 'user',
-			content:
-				'Produce the four sections as JSON with a "sections" array. Each section has "title" and "content" (markdown). Use only query tools.'
-		}
 	];
 
 	const result = await runAgentTurn(db, messages, executor, systemPrompt, {

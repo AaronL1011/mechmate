@@ -741,7 +741,6 @@
 						<ul class="divide-y divide-gray-200 dark:divide-gray-700">
 							{#each upcomingTasks as task (task.id)}
 								{@const equipmentName = getEquipmentName(task.equipment_id)}
-								{@const taskTypeName = getTaskTypeName(task.task_type_id)}
 								{@const daysUntilDue = getDaysUntilDue(task.next_due_date || null)}
 								{@const isOverdue = daysUntilDue < 0}
 
@@ -770,9 +769,7 @@
 														>
 															Overdue
 														</span>
-													{/if}
-												</div>
-												<div class="mt-1 flex items-start gap-2">
+													{:else}
 													<span
 														class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {priorityColors[
 															task.priority as keyof typeof priorityColors
@@ -780,10 +777,11 @@
 													>
 														{task.priority}
 													</span>
-													<p class="text-sm text-gray-600 dark:text-gray-300">
-														{equipmentName} • {taskTypeName}
-													</p>
+													{/if}
 												</div>
+												<p class="text-sm text-gray-600 dark:text-gray-300">
+													{equipmentName} 
+												</p>
 												{#if task.description}
 													<p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
 														{task.description}
