@@ -245,17 +245,17 @@
 		recognition.lang = 'en-US';
 
 		recognition.onresult = (event: SpeechResult) => {
-			let interim = '';
+			let lastInterim = '';
 			for (let i = event.resultIndex; i < event.results.length; i++) {
 				const item = event.results[i];
 				if (item.isFinal && item[0]) {
 					input = input ? `${input} ${item[0].transcript}`.trim() : item[0].transcript.trim();
-					interim = '';
+					lastInterim = '';
 				} else if (item[0]) {
-					interim += item[0].transcript;
+					lastInterim = item[0].transcript;
 				}
 			}
-			interimTranscript = interim;
+			interimTranscript = lastInterim;
 		};
 
 		recognition.onerror = (event: { error: string }) => {
