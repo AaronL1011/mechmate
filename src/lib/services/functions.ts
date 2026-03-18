@@ -6,8 +6,12 @@ import {
 	taskRepository,
 	maintenanceLogRepository,
 	equipmentTypeRepository,
-	taskTypeRepository
+	taskTypeRepository,
+	globalSettingsRepository
 } from '../repositories.js';
+import { runProactiveAgent } from '../agent/proactive.js';
+import { getAssistantToneContext } from '../agent/prompts.js';
+import type { GlobalSettingsValues } from '../types/db.js';
 
 export interface FunctionContext {
 	db: Kysely<Database>;
@@ -468,6 +472,8 @@ export class FunctionExecutor {
 				// Maintenance log functions
 				case 'get_maintenance_logs':
 					return await this.getMaintenanceLogs();
+				case 'generate_suggestions':
+					return await this.generateSuggestions();
 				case 'complete_task':
 					return await this.completeTask(args);
 				case 'create_maintenance_log':
@@ -644,6 +650,25 @@ export class FunctionExecutor {
 			type: 'query',
 			entity: 'maintenance_log',
 			result: logs,
+			requires_confirmation: false
+		};
+	}
+
+	private async generateSuggestions(): Promise<ActionResult> {
+		const tone = (await globalSettingsRepository.getTypedValue(
+			this.context.db,
+			'assistant_tone',
+			'professional'
+		)) as GlobalSettingsValues['assistant_tone'];
+		const toneContext = getAssistantToneContext(tone);
+		const result = await runProactiveAgent(this.context.db, {
+			toneContext,
+			skipChangeCheck: true
+		});
+		return {
+			type: 'query',
+			entity: 'maintenance_log',
+			result: result ?? 'No new suggestions generated; data may be unchanged.',
 			requires_confirmation: false
 		};
 	}

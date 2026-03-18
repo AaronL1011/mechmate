@@ -36,7 +36,7 @@
 	let showMechAssistant = $state(false);
 	let selectedTask: Task | null = $state(null);
 	let dueSoonTasks: (Task & { equipment_name?: string })[] = $state([]);
-	let proactiveSuggestion: { result: string; created_at: string } | null = $state(null);
+	let proactiveSuggestion: { id: number; result: string; created_at: string } | null = $state(null);
 	let showDropdown = $state(false);
 
 	const priorityColors = {
@@ -704,8 +704,10 @@
 
 			{#if proactiveSuggestion}
 				<ProactiveSuggestions
+					id={proactiveSuggestion.id}
 					result={proactiveSuggestion.result}
 					createdAt={proactiveSuggestion.created_at}
+					onDismiss={() => (proactiveSuggestion = null)}
 				/>
 			{/if}
 

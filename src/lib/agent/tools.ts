@@ -8,7 +8,8 @@ export const QUERY_TOOL_NAMES = [
 	'get_task_types',
 	'get_tasks',
 	'get_upcoming_tasks',
-	'get_maintenance_logs'
+	'get_maintenance_logs',
+	'generate_suggestions'
 ] as const;
 
 export function isQueryTool(name: string): boolean {

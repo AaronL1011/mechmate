@@ -3,11 +3,13 @@
 	import DOMPurify from 'dompurify';
 
 	interface Props {
+		id: number;
 		result: string;
 		createdAt: string;
+		onDismiss?: () => void;
 	}
 
-	const { result, createdAt }: Props = $props();
+	const { id, result, createdAt, onDismiss }: Props = $props();
 
 	marked.setOptions({ breaks: true, gfm: true });
 
@@ -35,13 +37,35 @@
 
 	const sections = $derived(parseSections(result));
 	let dismissedIndices = $state<Set<number>>(new Set());
+	let isDismissing = $state(false);
+
+	async function persistDismiss() {
+		if (isDismissing) return;
+		isDismissing = true;
+		try {
+			const res = await fetch('/api/agent/suggestions', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id })
+			});
+			if (res.ok) {
+				onDismiss?.();
+			}
+		} finally {
+			isDismissing = false;
+		}
+	}
 
 	function dismiss(index: number) {
 		dismissedIndices = new Set([...dismissedIndices, index]);
+		if (dismissedIndices.size === sections.length) {
+			persistDismiss();
+		}
 	}
 
 	function dismissAll() {
 		dismissedIndices = new Set(sections.map((_, i) => i));
+		persistDismiss();
 	}
 
 	const visibleSections = $derived(
@@ -64,20 +88,13 @@
 		</p>
 	</div>
 
-	{#if visibleSections.length === 0}
+	{#if visibleSections.length === 0 && isDismissing}
 		<div
 			class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50"
 		>
-			<p class="text-sm text-gray-500 dark:text-gray-400">Suggestions dismissed</p>
-			<button
-				type="button"
-				onclick={() => (dismissedIndices = new Set())}
-				class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-			>
-				Show again
-			</button>
+			<p class="text-sm text-gray-500 dark:text-gray-400">Dismissing…</p>
 		</div>
-	{:else}
+	{:else if visibleSections.length > 0}
 		<div class="flex flex-col gap-3">
 			{#each visibleSectionsWithIndex as { section, globalIndex } (section.title + globalIndex)}
 				<div
@@ -121,7 +138,8 @@
 			<button
 				type="button"
 				onclick={dismissAll}
-				class="mt-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+				disabled={isDismissing}
+				class="mt-2 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-300"
 			>
 				Dismiss all
 			</button>

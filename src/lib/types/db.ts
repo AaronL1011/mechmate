@@ -402,6 +402,8 @@ export interface ProactiveSuggestionsTable {
 	id: Generated<number>;
 	result: string;
 	created_at: ColumnType<Date, string | undefined, never>;
+	dismissed_at: ColumnType<Date | null, string | undefined, string>;
+	content_hash: string | null;
 }
 
 export type ProactiveSuggestion = Selectable<ProactiveSuggestionsTable>;

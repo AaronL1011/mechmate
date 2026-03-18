@@ -4,9 +4,12 @@ import type { Database } from '../types/db.js';
 import { NotificationService } from './notifications.js';
 import { backupManager } from './backup.js';
 import { getConfig } from '../config.js';
+import { globalSettingsRepository } from '../repositories.js';
 import * as pendingActions from '../agent/pending-actions.js';
-import { runProactiveAgent } from '../agent/proactive.js';
+import { runProactiveAgent, pruneOldSuggestions } from '../agent/proactive.js';
+import { getAssistantToneContext } from '../agent/prompts.js';
 import { llmService } from '../services/llm.js';
+import type { GlobalSettingsValues } from '../types/db.js';
 
 let schedulerInstance: NotificationScheduler | null = null;
 
@@ -52,6 +55,14 @@ export class NotificationScheduler {
 				} catch (error) {
 					console.error('Error cleaning expired pending actions:', error);
 				}
+				try {
+					const pruned = await pruneOldSuggestions(this.db);
+					if (pruned > 0) {
+						console.log(`Pruned ${pruned} proactive suggestions older than 90 days`);
+					}
+				} catch (error) {
+					console.error('Error pruning old proactive suggestions:', error);
+				}
 			},
 			{
 				scheduled: true,
@@ -68,7 +79,13 @@ export class NotificationScheduler {
 				async () => {
 					console.log('Running proactive agent...');
 					try {
-						const result = await runProactiveAgent(this.db);
+						const tone = (await globalSettingsRepository.getTypedValue(
+							this.db,
+							'assistant_tone',
+							'professional'
+						)) as GlobalSettingsValues['assistant_tone'];
+						const toneContext = getAssistantToneContext(tone);
+						const result = await runProactiveAgent(this.db, { toneContext });
 						if (result) {
 							console.log('Proactive agent completed; suggestions stored.');
 						} else {

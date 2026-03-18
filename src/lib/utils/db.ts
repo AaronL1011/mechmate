@@ -386,6 +386,9 @@ export async function initializeTables(db: Kysely<Database>) {
 	}
 	await addColumnIfNotExists(db, 'maintenance_logs', 'user_id', 'text', 'default_user');
 	await addColumnIfNotExists(db, 'notification_subscriptions', 'user_id', 'text', 'default_user');
+
+	await addColumnIfNotExists(db, 'proactive_suggestions', 'dismissed_at', 'text', '', true);
+	await addColumnIfNotExists(db, 'proactive_suggestions', 'content_hash', 'text', '', true);
 }
 
 // Helper function to safely add columns if they don't exist
@@ -394,7 +397,8 @@ async function addColumnIfNotExists(
 	tableName: string,
 	columnName: string,
 	columnType: string,
-	defaultValue: string
+	defaultValue: string,
+	nullable = false
 ) {
 	try {
 		// Check if column exists by attempting to query it
@@ -406,9 +410,10 @@ async function addColumnIfNotExists(
 	} catch (_) {
 		// Column doesn't exist, add it
 		console.log(`Adding ${columnName} column to ${tableName} table`);
+		const colModifier = nullable ? (col: any) => col : (col: any) => col.defaultTo(defaultValue);
 		await db.schema
 			.alterTable(tableName)
-			.addColumn(columnName, columnType as any, (col) => col.defaultTo(defaultValue))
+			.addColumn(columnName, columnType as any, colModifier)
 			.execute();
 
 		// Create index for user_id columns for future multi-user support

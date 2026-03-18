@@ -106,3 +106,10 @@ Produce your response in the following four sections:
 4. **Priorities**: Suggest 1–3 priorities (e.g. "tackle overdue brake inspection on [equipment] first") so the user can triage quickly.
 
 Keep the output concise and scannable. Use bullet points and clear headings.`;
+
+export function getProactiveSystemPrompt(toneContext: string): string {
+	const toneSuffix = toneContext
+		? `\n\nTone instruction: ${toneContext}. Maintain concise, bullet-point, alert-friendly formatting regardless of tone.`
+		: '';
+	return `${PROACTIVE_SYSTEM_PROMPT}${toneSuffix}`;
+}
