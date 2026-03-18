@@ -52,6 +52,22 @@ export interface LLMResponse {
 	};
 }
 
+export type LLMResponseFormat =
+	| { type: 'json_object' }
+	| {
+			type: 'json_schema';
+			json_schema: {
+				name: string;
+				strict?: boolean;
+				schema: {
+					type: 'object';
+					properties: Record<string, unknown>;
+					required?: string[];
+					additionalProperties?: boolean;
+				};
+			};
+	  };
+
 export interface LLMRequest {
 	model: string;
 	messages: LLMMessage[];
@@ -65,6 +81,7 @@ export interface LLMRequest {
 	temperature?: number;
 	max_tokens?: number;
 	stream?: boolean;
+	response_format?: LLMResponseFormat;
 }
 
 export class LLMService {

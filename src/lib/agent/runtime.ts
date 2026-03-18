@@ -1,17 +1,44 @@
 import type { Kysely } from 'kysely';
 import type { Database } from '$lib/types/db.js';
 import type { LLMMessage } from '$lib/services/llm.js';
+import type { LLMResponseFormat } from '$lib/services/llm.js';
 import { llmService } from '$lib/services/llm.js';
 import { getToolDefinitionsForLLM, isQueryTool } from './tools.js';
 import type { FunctionExecutor, ActionResult } from './executor.js';
 
+function toLLMResponseFormat(format: ResponseOutputFormat): LLMResponseFormat {
+	if (format.type === 'json_object') return { type: 'json_object' };
+	return {
+		type: 'json_schema',
+		json_schema: format.schema
+	};
+}
+
+export type ResponseOutputFormat =
+	| { type: 'json_object' }
+	| {
+			type: 'json_schema';
+			schema: {
+				name: string;
+				strict?: boolean;
+				schema: {
+					type: 'object';
+					properties: Record<string, unknown>;
+					required?: string[];
+					additionalProperties?: boolean;
+				};
+			};
+	  };
+
 export interface RunAgentTurnOptions {
 	queryOnly?: boolean;
 	maxIterations?: number;
+	responseFormat?: ResponseOutputFormat;
 }
 
 export interface RunAgentTurnResult {
 	message?: string;
+	structuredMessage?: unknown;
 	conversationHistory?: LLMMessage[];
 	actionsForConfirmation?: ActionResult[];
 	error?: string;
@@ -25,7 +52,7 @@ export async function runAgentTurn(
 	systemPrompt: string,
 	options: RunAgentTurnOptions = {}
 ): Promise<RunAgentTurnResult> {
-	const { queryOnly = false, maxIterations = 5 } = options;
+	const { queryOnly = false, maxIterations = 5, responseFormat } = options;
 	const tools = getToolDefinitionsForLLM(queryOnly);
 	const llmTools = tools.map((func) => ({ type: 'function' as const, function: func }));
 
@@ -38,7 +65,8 @@ export async function runAgentTurn(
 		const llmResponse = await llmService.completions({
 			messages: currentMessages,
 			tools: llmTools,
-			tool_choice: 'auto'
+			tool_choice: 'auto',
+			...(responseFormat && { response_format: toLLMResponseFormat(responseFormat) })
 		});
 
 		const choice = llmResponse.choices[0];
@@ -92,10 +120,22 @@ export async function runAgentTurn(
 			continue;
 		}
 
+		const rawContent =
+			choice.message.content ||
+			'I need more information to help you with that request.';
+
+		let structuredMessage: unknown | undefined;
+		if (responseFormat && rawContent) {
+			try {
+				structuredMessage = JSON.parse(rawContent) as unknown;
+			} catch {
+				structuredMessage = undefined;
+			}
+		}
+
 		return {
-			message:
-				choice.message.content ||
-				'I need more information to help you with that request.',
+			message: rawContent,
+			...(structuredMessage !== undefined && { structuredMessage }),
 			conversationHistory: currentMessages
 		};
 	}

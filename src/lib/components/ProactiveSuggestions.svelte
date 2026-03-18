@@ -18,21 +18,24 @@
 		return DOMPurify.sanitize(marked(text) as string);
 	}
 
-	function parseSections(text: string): { title: string; content: string }[] {
-		const normalized = text.replace(/^##\s+(.+)$/gm, '**$1**:');
-		const regex = /\*\*([^*]+)\*\*[:\s]*\n?([\s\S]*?)(?=\*\*[^*]+\*\*[:\s]*\n?|$)/g;
-		const sections: { title: string; content: string }[] = [];
-		let match;
-		while ((match = regex.exec(normalized)) !== null) {
-			const content = match[2].trim();
-			if (content) {
-				sections.push({ title: match[1].trim(), content });
+	function parseSections(result: string): { title: string; content: string }[] {
+		if (!result) return [];
+		try {
+			const parsed = JSON.parse(result) as unknown;
+			if (Array.isArray(parsed)) {
+				const sections = parsed.filter(
+					(s): s is { title: string; content: string } =>
+						typeof s === 'object' &&
+						s !== null &&
+						typeof (s as { title?: unknown }).title === 'string' &&
+						typeof (s as { content?: unknown }).content === 'string'
+				);
+				if (sections.length > 0) return sections;
 			}
+		} catch {
+			// fall through to legacy
 		}
-		if (sections.length === 0 && text.trim()) {
-			sections.push({ title: 'Suggestions', content: text.trim() });
-		}
-		return sections;
+		return [{ title: 'Summary', content: result }];
 	}
 
 	const sections = $derived(parseSections(result));

@@ -2,10 +2,19 @@ import { createHash } from 'crypto';
 import { sql } from 'kysely';
 import type { Kysely } from 'kysely';
 import type { Database } from '$lib/types/db.js';
-import { runAgentTurn } from './runtime.js';
+import { runAgentTurn, type ResponseOutputFormat } from './runtime.js';
 import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
+
+export interface ProactiveSection {
+	title: string;
+	content: string;
+}
+
+export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
+	type: 'json_object'
+};
 
 async function computeTaskStateHash(db: Kysely<Database>): Promise<string> {
 	const tasks = await db
@@ -49,13 +58,14 @@ export async function runProactiveAgent(
 		{
 			role: 'user',
 			content:
-				'Produce the four sections: due/overdue summary, parts and supplies to order, preventative maintenance tips, and 1–3 priorities. Use only query tools.'
+				'Produce the four sections as JSON with a "sections" array. Each section has "title" and "content" (markdown). Use only query tools.'
 		}
 	];
 
 	const result = await runAgentTurn(db, messages, executor, systemPrompt, {
 		queryOnly: true,
-		maxIterations: 5
+		maxIterations: 5,
+		responseFormat: PROACTIVE_SECTIONS_RESPONSE_FORMAT
 	});
 
 	if (result.error) {
@@ -63,7 +73,24 @@ export async function runProactiveAgent(
 		return null;
 	}
 
+	const structured = result.structuredMessage as { sections?: ProactiveSection[] } | undefined;
+	const sections = structured?.sections;
 	const text = result.message ?? null;
+
+	if (sections && Array.isArray(sections) && sections.length > 0) {
+		const validSections = sections.filter(
+			(s): s is ProactiveSection =>
+				typeof s === 'object' &&
+				s !== null &&
+				typeof (s as ProactiveSection).title === 'string' &&
+				typeof (s as ProactiveSection).content === 'string'
+		);
+		if (validSections.length > 0) {
+			await storeProactiveResult(db, JSON.stringify(validSections), currentHash);
+			return JSON.stringify(validSections);
+		}
+	}
+
 	if (text) {
 		await storeProactiveResult(db, text, currentHash);
 	}
