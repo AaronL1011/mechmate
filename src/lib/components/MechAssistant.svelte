@@ -247,14 +247,14 @@
 
 		recognition.onresult = (event: SpeechResult) => {
 			// Per Web Speech API: process only changed results (resultIndex..length)
-			// Each result: isFinal → append to accumulated input; !isFinal → replace interim display
+			// Only append when isFinal === true; treat everything else as interim (replace, never append)
 			let lastInterim = '';
 			for (let i = event.resultIndex; i < event.results.length; i++) {
 				const result = event.results[i];
 				const transcript = result[0]?.transcript?.trim();
 				if (!transcript) continue;
 
-				if (result.isFinal) {
+				if (result.isFinal === true) {
 					input = input ? `${input} ${transcript}`.trim() : transcript;
 					lastInterim = '';
 				} else {
@@ -280,20 +280,25 @@
 		};
 
 		recognition.onend = () => {
-			// Commit any in-flight interim text before the session closes.
-			if (interimTranscript) {
-				input = input ? `${input} ${interimTranscript}`.trim() : interimTranscript.trim();
-				interimTranscript = '';
-			}
 			recognitionInstance = null;
 
 			if (shouldBeListening) {
-				// Chrome mobile fires onend after every utterance even with continuous:true.
-				// Auto-restart to maintain the illusion of continuous recording.
+				// Auto-restart: do NOT commit interim here. Chrome fires onend after each
+				// phrase; committing each time would duplicate text. The next session will
+				// deliver finals for any remaining speech.
+				interimTranscript = '';
 				recognitionRestartTimer = setTimeout(() => {
 					if (shouldBeListening) createAndStartRecognition();
 				}, 150);
 			} else {
+				// User paused: commit any in-flight interim before stopping.
+				if (interimTranscript) {
+					const toAdd = interimTranscript.trim();
+					if (toAdd && !input.endsWith(toAdd)) {
+						input = input ? `${input} ${toAdd}`.trim() : toAdd;
+					}
+					interimTranscript = '';
+				}
 				voiceState = 'paused';
 			}
 		};
