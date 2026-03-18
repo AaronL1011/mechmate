@@ -58,7 +58,6 @@
 	let audioContext: AudioContext | null = $state(null);
 	let analyserNode: AnalyserNode | null = $state(null);
 	let waveformAnimationId = $state<number | null>(null);
-	let interimTranscript = $state('');
 	let shouldBeListening = false;
 	let recognitionRestartTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -242,26 +241,17 @@
 		const recognition = new Recognition() as SpeechRecognitionInstance;
 		recognitionInstance = recognition;
 		recognition.continuous = true;
-		recognition.interimResults = true;
+		recognition.interimResults = false;
 		recognition.lang = 'en-US';
 
 		recognition.onresult = (event: SpeechResult) => {
-			// Per Web Speech API: process only changed results (resultIndex..length)
-			// Only append when isFinal === true; treat everything else as interim (replace, never append)
-			let lastInterim = '';
 			for (let i = event.resultIndex; i < event.results.length; i++) {
 				const result = event.results[i];
+				if (result.isFinal !== true) continue;
 				const transcript = result[0]?.transcript?.trim();
 				if (!transcript) continue;
-
-				if (result.isFinal === true) {
-					input = input ? `${input} ${transcript}`.trim() : transcript;
-					lastInterim = '';
-				} else {
-					lastInterim = transcript;
-				}
+				input = input ? `${input} ${transcript}`.trim() : transcript;
 			}
-			interimTranscript = lastInterim;
 		};
 
 		recognition.onerror = (event: { error: string }) => {
@@ -281,24 +271,11 @@
 
 		recognition.onend = () => {
 			recognitionInstance = null;
-
 			if (shouldBeListening) {
-				// Auto-restart: do NOT commit interim here. Chrome fires onend after each
-				// phrase; committing each time would duplicate text. The next session will
-				// deliver finals for any remaining speech.
-				interimTranscript = '';
 				recognitionRestartTimer = setTimeout(() => {
 					if (shouldBeListening) createAndStartRecognition();
 				}, 150);
 			} else {
-				// User paused: commit any in-flight interim before stopping.
-				if (interimTranscript) {
-					const toAdd = interimTranscript.trim();
-					if (toAdd && !input.endsWith(toAdd)) {
-						input = input ? `${input} ${toAdd}`.trim() : toAdd;
-					}
-					interimTranscript = '';
-				}
 				voiceState = 'paused';
 			}
 		};
@@ -382,7 +359,6 @@
 
 	function pauseVoice() {
 		shouldBeListening = false;
-		interimTranscript = '';
 		stopRecognition();
 		voiceState = 'paused';
 	}
@@ -397,7 +373,6 @@
 
 	function cancelVoice() {
 		shouldBeListening = false;
-		interimTranscript = '';
 		stopRecognition();
 		stopWaveform();
 		releaseMicrophone();
@@ -407,7 +382,6 @@
 
 	function sendAndCloseVoice() {
 		shouldBeListening = false;
-		interimTranscript = '';
 		stopRecognition();
 		stopWaveform();
 		releaseMicrophone();
@@ -848,17 +822,13 @@
 									<p class="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500">
 										{voiceState === 'listening' ? 'Listening…' : 'Paused'}
 									</p>
-									{#if input || interimTranscript}
-										<p class="mt-0.5 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-											{input}{input && interimTranscript ? ' ' : ''}<span
-												class="text-gray-400 dark:text-gray-500">{interimTranscript}</span
-											>
-										</p>
-									{:else}
-										<p class="mt-0.5 text-sm italic text-gray-300 dark:text-gray-600">
-											Say something…
-										</p>
-									{/if}
+									<p
+										class="mt-0.5 text-sm leading-relaxed {input
+											? 'text-gray-800 dark:text-gray-200'
+											: 'italic text-gray-400 dark:text-gray-500'}"
+									>
+										{input || 'Say something…'}
+									</p>
 								</div>
 								<div
 									class="flex items-center justify-end gap-2 border-t border-gray-100 p-2.5 dark:border-gray-700"
@@ -889,7 +859,7 @@
 									</button>
 									<button
 										type="button"
-										disabled={!input.trim() && !interimTranscript.trim() || isProcessing}
+										disabled={!input.trim() || isProcessing}
 										onclick={sendAndCloseVoice}
 										class="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 dark:bg-blue-700 dark:hover:bg-blue-600"
 									>
