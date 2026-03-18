@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import { sql } from 'kysely';
 import type { Kysely } from 'kysely';
-import type { Database } from '$lib/types/db.js';
+import type { Database, ProactiveSuggestion } from '$lib/types/db.js';
 import { runAgentTurn, type ResponseOutputFormat } from './runtime.js';
 import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
@@ -13,7 +13,17 @@ export interface ProactiveSection {
 }
 
 export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
-	type: 'json_object'
+	type: 'json_schema',
+	schema: {
+		name: 'ProactiveSections',
+		strict: true,
+		schema: {
+			type: 'object',
+			properties: {
+				sections: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' } } } }
+			}
+		}
+	}
 };
 
 async function computeTaskStateHash(db: Kysely<Database>): Promise<string> {
@@ -86,25 +96,22 @@ export async function runProactiveAgent(
 				typeof (s as ProactiveSection).content === 'string'
 		);
 		if (validSections.length > 0) {
-			await storeProactiveResult(db, JSON.stringify(validSections), currentHash);
+			await storeProactiveResults(db, validSections, currentHash);
 			return JSON.stringify(validSections);
 		}
 	}
 
-	if (text) {
-		await storeProactiveResult(db, text, currentHash);
-	}
-	return text;
+	return 'Could not generate proactive suggestions';
 }
 
-export async function storeProactiveResult(
+export async function storeProactiveResults(
 	db: Kysely<Database>,
-	result: string,
+	sections: ProactiveSection[],
 	contentHash: string
 ): Promise<void> {
 	await db
 		.insertInto('proactive_suggestions')
-		.values({ result, content_hash: contentHash })
+		.values(sections.map(s => ({ result: JSON.stringify(s), content_hash: contentHash })))
 		.execute();
 }
 
@@ -129,16 +136,20 @@ export async function dismissProactiveSuggestion(
 	return result.length > 0;
 }
 
-export async function getLatestProactiveResult(
+export async function getLatestProactiveResults(
 	db: Kysely<Database>
-): Promise<{ id: number; result: string; created_at: string } | null> {
-	const row = await db
+): Promise<ProactiveSuggestion[]> {
+	const rows = await db
 		.selectFrom('proactive_suggestions')
 		.select(['id', 'result', 'created_at'])
 		.where('dismissed_at', 'is', null)
 		.orderBy('id', 'desc')
-		.limit(1)
-		.executeTakeFirst();
-	if (!row) return null;
-	return { id: row.id, result: row.result, created_at: String(row.created_at) };
+		.execute();
+	return rows.map(r => ({
+		id: r.id,
+		result: r.result,
+		created_at: r.created_at,
+		dismissed_at: null,
+		content_hash: null
+	}));
 }

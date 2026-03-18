@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
+	import type { DashboardLoadData } from './+page';
 	import type {
-		DashboardStats,
 		Task,
-		Equipment,
 		TaskType,
-		MaintenanceLog,
-		EquipmentType,
-		GlobalSettingsValues
+		Equipment,
+		MaintenanceLog
 	} from '$lib/types/db.js';
 	import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
 	import AddTaskModal from '$lib/components/AddTaskModal.svelte';
@@ -15,15 +14,9 @@
 	import MechAssistant from '$lib/components/MechAssistant.svelte';
 	import ProactiveSuggestions from '$lib/components/ProactiveSuggestions.svelte';
 
-	let stats: DashboardStats | null = $state(null);
-	let upcomingTasks: Task[] = $state([]);
-	let equipment: Equipment[] = $state([]);
-	let equipmentTypes: EquipmentType[] = $state([]);
-	let taskTypes: TaskType[] = $state([]);
-	let loading = $state(true);
-	let error = $state('');
-	let viewMode: 'list' | 'calendar' = $state('list');
-	let settings: GlobalSettingsValues | null = $state(null);
+	let { data }: { data: DashboardLoadData } = $props();
+
+	let viewMode = $state<'list' | 'calendar'>('list');
 
 	// Calendar state
 	let currentDate = $state(new Date());
@@ -35,9 +28,17 @@
 	let showCompleteTaskModal = $state(false);
 	let showMechAssistant = $state(false);
 	let selectedTask: Task | null = $state(null);
-	let dueSoonTasks: (Task & { equipment_name?: string })[] = $state([]);
-	let proactiveSuggestion: { id: number; result: string; created_at: string } | null = $state(null);
 	let showDropdown = $state(false);
+
+	const stats = $derived(data.stats);
+	const upcomingTasks = $derived(data.upcomingTasks);
+	const equipment = $derived(data.equipment);
+	const equipmentTypes = $derived(data.equipmentTypes);
+	const taskTypes = $derived(data.taskTypes);
+	const dueSoonTasks = $derived(data.dueSoonTasks);
+	const proactiveSuggestions = $derived(data.proactiveSuggestions);
+	const settings = $derived(data.settings);
+	const error = $derived(data.error ?? '');
 
 	const priorityColors = {
 		low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
@@ -167,51 +168,12 @@
 		showCompleteTaskModal = true;
 	}
 
-	async function loadData() {
-		try {
-			loading = true;
-			const [statsRes, tasksRes, equipmentRes, taskTypesRes, equipmentTypesRes, dueSoonRes, suggestionsRes] =
-				await Promise.all([
-					fetch('/api/dashboard'),
-					fetch('/api/tasks?type=upcoming'),
-					fetch('/api/equipment'),
-					fetch('/api/task-types'),
-					fetch('/api/equipment-types'),
-					fetch('/api/dashboard/due-soon?days=7'),
-					fetch('/api/agent/suggestions')
-				]);
-
-			if (
-				!statsRes.ok ||
-				!tasksRes.ok ||
-				!equipmentRes.ok ||
-				!taskTypesRes.ok ||
-				!equipmentTypesRes.ok
-			) {
-				throw new Error('Failed to load data');
-			}
-
-			stats = await statsRes.json();
-			upcomingTasks = await tasksRes.json();
-			equipment = await equipmentRes.json();
-			taskTypes = await taskTypesRes.json();
-			equipmentTypes = await equipmentTypesRes.json();
-			dueSoonTasks = dueSoonRes.ok ? await dueSoonRes.json() : [];
-			proactiveSuggestion = suggestionsRes.ok ? await suggestionsRes.json() : null;
-		} catch (err) {
-			error = 'Failed to load dashboard data';
-			console.error(err);
-		} finally {
-			loading = false;
-		}
-	}
-
 	function getEquipmentName(equipmentId: number): string {
-		return equipment.find((e) => e.id === equipmentId)?.name || 'Unknown Equipment';
+		return equipment.find((e: Equipment) => e.id === equipmentId)?.name || 'Unknown Equipment';
 	}
 
 	function getTaskTypeName(taskTypeId: number): string {
-		return taskTypes.find((t) => t.id === taskTypeId)?.name || 'Unknown Task';
+		return taskTypes.find((t: TaskType) => t.id === taskTypeId)?.name || 'Unknown Task';
 	}
 
 	function getDaysUntilDue(dateString: string | null): number {
@@ -222,25 +184,20 @@
 		return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 	}
 
-	function handleEquipmentCreated(event: CustomEvent) {
-		const newEquipment = event.detail;
-		equipment = [...equipment, newEquipment];
-		loadData();
+	function handleEquipmentCreated(_event: CustomEvent) {
+		invalidateAll();
 	}
 
-	function handleTaskCreated(event: CustomEvent) {
-		const newTask = event.detail;
-		upcomingTasks = [...upcomingTasks, newTask];
-		loadData();
+	function handleTaskCreated(_event: CustomEvent) {
+		invalidateAll();
 	}
 
-	function handleTaskCompleted(result: {
+	function handleTaskCompleted(_result: {
 		updated_task: Task;
 		maintenance_log: MaintenanceLog;
 		message: string;
 	}) {
-		upcomingTasks = upcomingTasks.filter((task) => task.id !== result.updated_task.id);
-		loadData();
+		invalidateAll();
 	}
 
 	function handleClickOutside(event: MouseEvent) {
@@ -250,28 +207,7 @@
 		}
 	}
 
-	async function loadSettings() {
-		try {
-			loading = true;
-			error = '';
-
-			const response = await fetch('/api/settings');
-			if (!response.ok) {
-				throw new Error('Failed to load settings');
-			}
-
-			settings = await response.json();
-		} catch (err) {
-			error = 'Failed to load settings';
-			console.error(err);
-		} finally {
-			loading = false;
-		}
-	}
-
 	onMount(() => {
-		loadSettings();
-		loadData();
 		calendarDays = generateCalendarDays(currentDate);
 
 		document.addEventListener('click', handleClickOutside);
@@ -517,19 +453,13 @@
 	</header>
 
 	<main class="mx-auto max-w-7xl">
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<div
-					class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-400"
-				></div>
-			</div>
-		{:else if error}
+		{#if error}
 			<div
 				class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
 			>
 				<p class="text-red-800 dark:text-red-200">{error}</p>
 				<button
-					onclick={loadData}
+					onclick={() => invalidateAll()}
 					class="mt-2 text-red-600 underline hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
 				>
 					Try again
@@ -702,13 +632,8 @@
 				</div>
 			{/if}
 
-			{#if proactiveSuggestion}
-				<ProactiveSuggestions
-					id={proactiveSuggestion.id}
-					result={proactiveSuggestion.result}
-					createdAt={proactiveSuggestion.created_at}
-					onDismiss={() => (proactiveSuggestion = null)}
-				/>
+			{#if proactiveSuggestions.length > 0}
+				<ProactiveSuggestions suggestions={proactiveSuggestions} onDismiss={() => invalidateAll()} />
 			{/if}
 
 			<!-- View Mode Toggle -->
@@ -850,7 +775,7 @@
 												<div class="mt-1 flex items-start gap-2">
 													<span
 														class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {priorityColors[
-															task.priority
+															task.priority as keyof typeof priorityColors
 														]} whitespace-nowrap capitalize"
 													>
 														{task.priority}
@@ -996,6 +921,6 @@
 
 <MechAssistant
 	isOpen={showMechAssistant}
-	onSuccess={loadData}
+	onSuccess={() => invalidateAll()}
 	onClose={() => (showMechAssistant = false)}
 />
