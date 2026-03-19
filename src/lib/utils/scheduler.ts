@@ -70,8 +70,8 @@ export class NotificationScheduler {
 			}
 		);
 
-		// Schedule proactive agent (e.g. daily at 06:00)
-		const proactiveSchedule = process.env.PROACTIVE_CRON_SCHEDULE || '0 6 * * *';
+		// Schedule proactive agent (daily at 22:00 UTC)
+		const proactiveSchedule = process.env.PROACTIVE_CRON_SCHEDULE || '0 22 * * *';
 		if (llmService.isConfigured()) {
 			console.log(`🤖 Starting proactive agent scheduler with schedule: ${proactiveSchedule}`);
 			this.proactiveCronJob = cron.schedule(
