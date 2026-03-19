@@ -1,5 +1,6 @@
 import type { Equipment, TaskCompletion } from '$lib/types/db';
 import { formatCurrency, formatDate } from './format';
+import { normalizePartsUsed } from './parts';
 
 function generateTableRow(completion: TaskCompletion, equipment: Equipment): string {
 	return `
@@ -10,7 +11,7 @@ function generateTableRow(completion: TaskCompletion, equipment: Equipment): str
                     <td>${completion.notes || 'N/A'}</td>
                     <td>${completion.cost ? formatCurrency(completion.cost) : 'N/A'}</td>
                     <td>${completion.service_provider || 'N/A'}</td>
-                    <td>${completion.parts_used ? completion.parts_used.join(', ') : 'N/A'}</td>
+                    <td>${normalizePartsUsed(completion.parts_used).join(', ') || 'N/A'}</td>
                   </tr>
                 `;
 }

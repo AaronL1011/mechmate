@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import type { Equipment, EquipmentType, TaskCompletion } from '$lib/types/db.js';
 	import { formatCurrency, formatDate } from '$lib/utils/format';
+	import { normalizePartsUsed } from '$lib/utils/parts.js';
 	import { createReportHTML } from '$lib/utils/pdf';
 	import EquipmentHistoryContent from './EquipmentHistoryContent.svelte';
 
@@ -60,8 +61,9 @@
 
 		const csvContent = [
 			headers.map(csvValue).join(','),
-			...completions.map((completion) =>
-				[
+			...completions.map((completion) => {
+				const partsCsv = normalizePartsUsed(completion.parts_used);
+				return [
 					formatDate(completion.completed_date),
 					completion.task_title || 'N/A',
 					completion.completed_usage_value
@@ -70,11 +72,11 @@
 					completion.notes || 'N/A',
 					completion.cost !== null && completion.cost !== undefined ? completion.cost : 'N/A',
 					completion.service_provider || 'N/A',
-					completion.parts_used ? completion.parts_used.join('; ') : 'N/A'
+					partsCsv.length ? partsCsv.join('; ') : 'N/A'
 				]
 					.map(csvValue)
-					.join(',')
-			)
+					.join(',');
+			})
 		].join('\n');
 
 		const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -116,7 +118,7 @@
 </script>
 
 <svelte:head>
-	<title>Maintenance History - {equipment?.name || 'Equipment'}</title>
+	<title>{equipment?.name || 'Equipment'} · Service history</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 dark:bg-gray-900">
@@ -126,7 +128,7 @@
 			<a
 				href="/equipment"
 				class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-				aria-label="return to dashboard"
+				aria-label="Back to equipment list"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -142,9 +144,9 @@
 			</a>
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900 lg:text-3xl dark:text-white">
-					Maintenance History
+					{equipment?.name || 'Equipment'}
 				</h1>
-				<p class="text-gray-600 dark:text-gray-300">{equipment?.name || 'Equipment'}</p>
+				<p class="text-gray-600 dark:text-gray-300">Service history</p>
 			</div>
 		</div>
 	</header>
