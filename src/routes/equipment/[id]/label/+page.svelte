@@ -7,14 +7,7 @@
 
 	const equipmentId = $derived($page.params.id);
 
-	const labelUrl = $derived(
-		typeof window !== 'undefined' ? `${window.location.origin}/equipment/${equipmentId}/history` : ''
-	);
-	const qrSrc = $derived(
-		labelUrl
-			? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(labelUrl)}`
-			: ''
-	);
+	const qrSrc = $derived(`/api/equipment/${equipmentId}/qr?size=200`);
 
 	onMount(async () => {
 		try {
@@ -37,9 +30,7 @@
 		<p class="text-red-600">{error}</p>
 	{:else}
 		<h1 class="mb-4 text-2xl font-bold text-gray-900">{equipmentName}</h1>
-		{#if qrSrc}
-			<img src={qrSrc} alt="QR code" width="200" height="200" class="border border-gray-200" />
-		{/if}
+		<img src={qrSrc} alt="QR code" width="200" height="200" class="border border-gray-200" />
 		<p class="mt-4 text-sm text-gray-500">Scan to open equipment</p>
 		<a href="/equipment/{equipmentId}/history" class="mt-2 text-blue-600 hover:underline"
 			>/equipment/{equipmentId}/history</a
