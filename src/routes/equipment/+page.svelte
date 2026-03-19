@@ -3,6 +3,7 @@
 	import type { Equipment, EquipmentType } from '$lib/types/db.js';
 	import EditEquipmentModal from '$lib/components/EditEquipmentModal.svelte';
 	import DeleteConfirmationModal from '$lib/components/DeleteConfirmationModal.svelte';
+	import EquipmentListItem from '$lib/components/EquipmentListItem.svelte';
 
 	let equipment: Equipment[] = [];
 	let equipmentTypes: EquipmentType[] = [];
@@ -77,28 +78,6 @@
 			console.error('Error deleting equipment:', err);
 			// You could show an error message here
 		}
-	}
-
-	function formatDate(dateString: string | null): string {
-		if (!dateString) return 'Not specified';
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	}
-
-	function parseTags(tags: string | null): string[] {
-		if (!tags) return [];
-		try {
-			return JSON.parse(tags);
-		} catch {
-			return [];
-		}
-	}
-
-	function getEquipmentTypeName(equipmentTypeId: number): string {
-		return equipmentTypes.find((e) => e.id === equipmentTypeId)?.name || 'Unknown';
 	}
 
 	onMount(() => {
@@ -192,112 +171,12 @@
 			>
 				<ul class="divide-y divide-gray-200 dark:divide-gray-700">
 					{#each equipment as equipmentItem (equipmentItem.id)}
-						<li class="px-6 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700">
-							<div class="flex flex-wrap items-center justify-between gap-y-4">
-								<div class="flex min-w-[400px] flex-1 items-center">
-									<div class="ml-4 flex-1">
-										<div class="flex items-center justify-between">
-											<div>
-												<h3 class="text-lg font-medium text-gray-900 dark:text-white">
-													{equipmentItem.name}
-												</h3>
-												<div
-													class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300"
-												>
-													<span class="capitalize"
-														>{getEquipmentTypeName(equipmentItem.equipment_type_id)}</span
-													>
-													{#if equipmentItem.make || equipmentItem.model}
-														<span>•</span>
-														<span>{equipmentItem.make} {equipmentItem.model}</span>
-													{/if}
-													{#if equipmentItem.year}
-														<span>•</span>
-														<span>{equipmentItem.year}</span>
-													{/if}
-												</div>
-												<div
-													class="mt-1 flex items-center space-x-4 text-xs text-gray-500 lg:text-sm dark:text-gray-400"
-												>
-													<span
-														>Current usage: {equipmentItem.current_usage_value}
-														{equipmentItem.usage_unit}</span
-													>
-													<span>•</span>
-													<span
-														>Total spent: ${(
-															(equipmentItem as { total_cost?: number }).total_cost ?? 0
-														).toFixed(2)}</span
-													>
-													{#if (equipmentItem as { next_due_summary?: { next_due_task_title: string; next_due_date?: string | null; next_due_usage_value?: number | null } }).next_due_summary}
-														{@const next = (equipmentItem as { next_due_summary?: { next_due_task_title: string; next_due_date?: string | null; next_due_usage_value?: number | null } }).next_due_summary}
-														{#if next}
-															<span>•</span>
-															<span>
-																Next: {next.next_due_task_title}
-																{#if next.next_due_date}
-																	due {formatDate(next.next_due_date)}
-																{:else if next.next_due_usage_value != null}
-																	at {next.next_due_usage_value} {equipmentItem.usage_unit}
-																{/if}
-															</span>
-														{/if}
-													{/if}
-													{#if equipmentItem.purchase_date}
-														<span>•</span>
-														<span>Purchased: {formatDate(equipmentItem.purchase_date)}</span>
-													{/if}
-												</div>
-												{#if (equipmentItem as { location?: string | null }).location}
-													<p class="mt-1 text-xs text-gray-500 lg:text-sm dark:text-gray-400">
-														Location: {(equipmentItem as { location?: string | null }).location}
-													</p>
-												{/if}
-												{#if equipmentItem.serial_number}
-													<p class="mt-1 text-xs text-gray-500 lg:text-sm dark:text-gray-400">
-														Serial: {equipmentItem.serial_number}
-													</p>
-												{/if}
-												{#if equipmentItem.tags}
-													{@const tags = parseTags(equipmentItem.tags)}
-													{#if tags.length > 0}
-														<div class="mt-2 flex flex-wrap gap-1">
-															{#each tags as tag (tag)}
-																<span
-																	class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-																>
-																	{tag}
-																</span>
-															{/each}
-														</div>
-													{/if}
-												{/if}
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="ml-auto flex items-center space-x-2">
-									<a
-										href="/equipment/{equipmentItem.id}/history"
-										class="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-									>
-										View History
-									</a>
-									<button
-										class="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-										on:click={() => openEditModal(equipmentItem)}
-									>
-										Edit
-									</button>
-									<button
-										class="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-										on:click={() => openDeleteModal(equipmentItem)}
-									>
-										Delete
-									</button>
-								</div>
-							</div>
-						</li>
+						<EquipmentListItem
+							equipment={equipmentItem}
+							{equipmentTypes}
+							onEdit={openEditModal}
+							onDelete={openDeleteModal}
+						/>
 					{/each}
 				</ul>
 			</div>
