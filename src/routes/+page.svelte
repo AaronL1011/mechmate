@@ -27,6 +27,7 @@
 	let showAddTaskModal = $state(false);
 	let showCompleteTaskModal = $state(false);
 	let showMechAssistant = $state(false);
+	let mechAssistantInitialPrompt = $state<string | undefined>(undefined);
 	let selectedTask: Task | null = $state(null);
 	let showDropdown = $state(false);
 
@@ -633,7 +634,14 @@
 			{/if}
 
 			{#if proactiveSuggestions.length > 0}
-				<ProactiveSuggestions suggestions={proactiveSuggestions} onDismiss={() => invalidateAll()} />
+				<ProactiveSuggestions
+					suggestions={proactiveSuggestions}
+					onDismiss={() => invalidateAll()}
+					onApprove={(action) => {
+						mechAssistantInitialPrompt = action;
+						showMechAssistant = true;
+					}}
+				/>
 			{/if}
 
 			<!-- View Mode Toggle -->
@@ -919,6 +927,10 @@
 
 <MechAssistant
 	isOpen={showMechAssistant}
+	initialPrompt={mechAssistantInitialPrompt}
 	onSuccess={() => invalidateAll()}
-	onClose={() => (showMechAssistant = false)}
+	onClose={() => {
+		mechAssistantInitialPrompt = undefined;
+		showMechAssistant = false;
+	}}
 />

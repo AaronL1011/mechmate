@@ -8,9 +8,10 @@
 		isOpen: boolean;
 		onClose: () => void;
 		onSuccess?: () => void;
+		initialPrompt?: string;
 	}
 
-	const { isOpen, onClose, onSuccess }: Props = $props();
+	const { isOpen, onClose, onSuccess, initialPrompt }: Props = $props();
 
 	type VoiceState = 'idle' | 'requesting' | 'listening' | 'paused' | 'unsupported' | 'denied';
 
@@ -405,6 +406,10 @@
 			textFallbackOpen = false;
 			if (!voiceSupported) voiceState = 'unsupported';
 			else voiceState = 'idle';
+			if (initialPrompt?.trim()) {
+				input = initialPrompt;
+				tick().then(() => processInput());
+			}
 		}
 	});
 

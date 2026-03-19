@@ -10,6 +10,7 @@ import type { LLMMessage } from '$lib/services/llm.js';
 export interface ProactiveSection {
 	title: string;
 	content: string;
+	agent_action?: string;
 }
 
 export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
@@ -20,7 +21,18 @@ export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
 		schema: {
 			type: 'object',
 			properties: {
-				sections: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' } } } }
+				sections: { 
+					type: 'array', 
+					items: { 
+						type: 'object', 
+						properties: { 
+							title: { type: 'string' }, 
+							content: { type: 'string' }, 
+							agent_action: { type: 'string' } 
+						},
+						required: ['title', 'content']
+					} 
+				}
 			}
 		}
 	}

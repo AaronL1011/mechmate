@@ -8,9 +8,10 @@
 	interface Props {
 		suggestions: ProactiveSuggestion[];
 		onDismiss?: (id: number) => void;
+		onApprove?: (agentAction: string) => void;
 	}
 
-	const { suggestions, onDismiss }: Props = $props();
+	const { suggestions, onDismiss, onApprove }: Props = $props();
 
 	marked.setOptions({ breaks: true, gfm: true });
 
@@ -49,6 +50,18 @@
 	);
 
 	let dismissingIds = $state<Set<number>>(new Set());
+	let approvingIds = $state<Set<number>>(new Set());
+
+	async function approve(id: number, agentAction: string) {
+		if (approvingIds.has(id)) return;
+		approvingIds = new Set([...approvingIds, id]);
+		try {
+			await dismiss(id);
+			onApprove?.(agentAction);
+		} finally {
+			approvingIds = new Set([...approvingIds].filter((x) => x !== id));
+		}
+	}
 
 	async function dismiss(id: number) {
 		if (dismissingIds.has(id)) return;
@@ -110,26 +123,28 @@
 							{@html renderMarkdown(item.content) || '&#8203;'}
 						</div>
 					</div>
-					<button
-						type="button"
-						onclick={() => dismiss(item.id)}
-						disabled={dismissingIds.has(item.id)}
-						aria-label="Dismiss {item.title}"
-						class="shrink-0 rounded p-1 text-amber-600 opacity-70 transition-opacity hover:bg-amber-200/50 hover:opacity-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-800/50"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="18"
-							height="18"
-							fill="currentColor"
-							viewBox="0 0 256 256"
-							aria-hidden="true"
+					<div class="flex shrink-0 items-center gap-1">
+						{#if item.agent_action}
+							<button
+								type="button"
+								onclick={() => approve(item.id, item.agent_action!)}
+								disabled={approvingIds.has(item.id) || dismissingIds.has(item.id)}
+								aria-label="Approve {item.title}"
+								class="rounded p-1 text-emerald-600 opacity-70 transition-opacity hover:bg-emerald-200/50 hover:opacity-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-800/50"
+							>
+								action
+							</button>
+						{/if}
+						<button
+							type="button"
+							onclick={() => dismiss(item.id)}
+							disabled={dismissingIds.has(item.id)}
+							aria-label="Dismiss {item.title}"
+							class="rounded p-1 text-amber-600 opacity-70 transition-opacity hover:bg-amber-200/50 hover:opacity-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-800/50"
 						>
-							<path
-								d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
-							/>
-						</svg>
-					</button>
+							dismiss
+						</button>
+					</div>
 				</div>
 			{/each}
 		</div>
