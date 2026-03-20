@@ -292,6 +292,7 @@
 				upcomingTasks={upcomingTasks}
 				{stats}
 				{equipment}
+				taskTypes={data.taskTypes}
 				onCompleteTask={openCompleteTaskModal}
 				onAddEquipment={() => requestOpenAddEquipmentModal.set(true)}
 				onAddTask={() => requestOpenAddTaskModal.set(true)}

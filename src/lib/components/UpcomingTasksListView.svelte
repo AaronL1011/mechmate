@@ -1,10 +1,21 @@
 <script lang="ts">
-	import type { Task, Equipment, DashboardStats } from '$lib/types/db.js';
+	import type { Task, Equipment, DashboardStats, TaskType } from '$lib/types/db.js';
+	import TaskTypeIcon from '$lib/components/TaskTypeIcon.svelte';
+	import {
+		BUCKET_LABELS,
+		BUCKET_ORDER,
+		compareTasksInBucket,
+		getDuePhrase,
+		getTaskDueBucket,
+		type TaskDueBucket,
+		type DuePhraseTone
+	} from '$lib/utils/taskBuckets.js';
 
 	let {
 		upcomingTasks,
 		stats,
 		equipment,
+		taskTypes = [],
 		onCompleteTask,
 		onAddEquipment,
 		onAddTask
@@ -12,195 +23,83 @@
 		upcomingTasks: Task[];
 		stats: DashboardStats | null;
 		equipment: Equipment[];
+		taskTypes?: TaskType[];
 		onCompleteTask: (task: Task) => void;
 		onAddEquipment: () => void;
 		onAddTask: () => void;
 	} = $props();
 
-	const priorityColors = {
-		low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-		medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
-		high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
-		critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+	const dueToneClass: Record<DuePhraseTone, string> = {
+		overdue: 'text-sm font-medium text-red-700 dark:text-red-300',
+		today: 'text-sm font-medium text-amber-700 dark:text-amber-300',
+		soon: 'text-sm font-medium text-amber-800/90 dark:text-amber-200/90',
+		neutral: 'text-sm font-medium text-gray-700 dark:text-gray-300',
+		muted: 'text-sm text-gray-500 dark:text-gray-400',
+		completed: 'text-sm text-gray-500 dark:text-gray-400'
 	};
 
-	function formatDate(date: Date | null): string {
-		if (!date) return 'No date set';
-		return date.toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric'
+	const sortedTasks = $derived.by(() => {
+		const list = [...upcomingTasks];
+		list.sort((a, b) => {
+			const ba = getTaskDueBucket(a);
+			const bb = getTaskDueBucket(b);
+			const ia = BUCKET_ORDER.indexOf(ba);
+			const ib = BUCKET_ORDER.indexOf(bb);
+			if (ia !== ib) return ia - ib;
+			return compareTasksInBucket(a, b, ba);
 		});
-	}
+		return list;
+	});
 
 	function getEquipmentName(equipmentId: number): string {
 		return equipment.find((e) => e.id === equipmentId)?.name || 'Unknown Equipment';
 	}
 
-	function getDaysUntilDue(dateString: string | null): number {
-		if (!dateString) return 0;
-		const dueDate = new Date(dateString);
-		const today = new Date();
-		const diffTime = dueDate.getTime() - today.getTime();
-		return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+	function getTaskTypeName(taskTypeId: number): string {
+		return taskTypes.find((t) => t.id === taskTypeId)?.name ?? '';
 	}
-</script>
 
-{#snippet taskIcon(taskTypeId: number)}
-	{#if taskTypeId === 1}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm106.18,74.58A8,8,0,0,0,144,136v58.66L112,216V136a8,8,0,0,0-2.16-5.47L40,56H216Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 2 || taskTypeId === 11}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M224,48V152a16,16,0,0,1-16,16H99.31l10.35,10.34a8,8,0,0,1-11.32,11.32l-24-24a8,8,0,0,1,0-11.32l24-24a8,8,0,0,1,11.32,11.32L99.31,152H208V48H96v8a8,8,0,0,1-16,0V48A16,16,0,0,1,96,32H208A16,16,0,0,1,224,48ZM168,192a8,8,0,0,0-8,8v8H48V104H156.69l-10.35,10.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L156.69,88H48a16,16,0,0,0-16,16V208a16,16,0,0,0,16,16H160a16,16,0,0,0,16-16v-8A8,8,0,0,0,168,192Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 3}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 4}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M235.5,216.81c-22.56-11-35.5-34.58-35.5-64.8V134.73a15.94,15.94,0,0,0-10.09-14.87L165,110a8,8,0,0,1-4.48-10.34l21.32-53a28,28,0,0,0-16.1-37,28.14,28.14,0,0,0-35.82,16,.61.61,0,0,0,0,.12L108.9,79a8,8,0,0,1-10.37,4.49L73.11,73.14A15.89,15.89,0,0,0,55.74,76.8C34.68,98.45,24,123.75,24,152a111.45,111.45,0,0,0,31.18,77.53A8,8,0,0,0,61,232H232a8,8,0,0,0,3.5-15.19ZM67.14,88l25.41,10.3a24,24,0,0,0,31.23-13.45l21-53c2.56-6.11,9.47-9.27,15.43-7a12,12,0,0,1,6.88,15.92L145.69,93.76a24,24,0,0,0,13.43,31.14L184,134.73V152c0,.33,0,.66,0,1L55.77,101.71A108.84,108.84,0,0,1,67.14,88Zm48,128a87.53,87.53,0,0,1-24.34-42,8,8,0,0,0-15.49,4,105.16,105.16,0,0,0,18.36,38H64.44A95.54,95.54,0,0,1,40,152a85.9,85.9,0,0,1,7.73-36.29l137.8,55.12c3,18,10.56,33.48,21.89,45.16Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 5}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM128,216a72.08,72.08,0,0,1-72-72c0-57.23,55.47-105,72-118,16.53,13,72,60.75,72,118A72.08,72.08,0,0,1,128,216Zm55.89-62.66a57.6,57.6,0,0,1-46.56,46.55A8.75,8.75,0,0,1,136,200a8,8,0,0,1-1.32-15.89c16.57-2.79,30.63-16.85,33.44-33.45a8,8,0,0,1,15.78,2.68Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 7}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M128,80a48,48,0,1,0,48,48A48.06,48.06,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm95.68-93.85L135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17h0a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,224,40,175.82V80.18L128,32l88,48.17v95.64Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 8}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M136,40V216a8,8,0,0,1-16,0V40a8,8,0,0,1,16,0ZM69.66,90.34a8,8,0,0,0-11.32,11.32L76.69,120H16a8,8,0,0,0,0,16H76.69L58.34,154.34a8,8,0,0,0,11.32,11.32l32-32a8,8,0,0,0,0-11.32ZM240,120H179.31l18.35-18.34a8,8,0,0,0-11.32-11.32l-32,32a8,8,0,0,0,0,11.32l32,32a8,8,0,0,0,11.32-11.32L179.31,136H240a8,8,0,0,0,0-16Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 9}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M192,136a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0v-8h-8a8,8,0,0,1,0-16h8v-8a8,8,0,0,1,16,0v8h8A8,8,0,0,1,192,136Zm-88-8H72a8,8,0,0,0,0,16h32a8,8,0,0,0,0-16ZM240,88v96a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V88A16,16,0,0,1,32,72H48V56A16,16,0,0,1,64,40H96a16,16,0,0,1,16,16V72h32V56a16,16,0,0,1,16-16h32a16,16,0,0,1,16,16V72h16A16,16,0,0,1,240,88ZM160,72h32V56H160ZM64,72H96V56H64ZM224,184V88H32v96H224Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 10}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"
-			></path></svg
-		>
-	{:else if taskTypeId === 12}
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="currentColor"
-			viewBox="0 0 256 256"
-			><path
-				d="M240,184h-8V57.9l9.67-2.08a8,8,0,1,0-3.35-15.64l-224,48A8,8,0,0,0,16,104a8.16,8.16,0,0,0,1.69-.18L24,102.47V184H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM40,99,216,61.33V184H192V128a8,8,0,0,0-8-8H72a8,8,0,0,0-8,8v56H40Zm136,53H80V136h96ZM80,168h96v16H80Z"
-			></path></svg
-		>
-	{:else}
-		<svg
-			class="h-6 w-6 text-gray-600 dark:text-gray-300"
-			fill="none"
-			stroke="currentColor"
-			viewBox="0 0 24 24"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-			></path>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-			></path>
-		</svg>
-	{/if}
-{/snippet}
+	const ctaButtonClass =
+		'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 sm:py-2';
+</script>
 
 {#if upcomingTasks.length === 0}
 	<div
-		class="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800 dark:shadow-gray-900/20"
+		class="rounded-lg bg-white p-10 text-center shadow dark:bg-gray-800 dark:shadow-gray-900/20 sm:p-12"
 	>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
 			fill="currentColor"
 			viewBox="0 0 256 256"
+			aria-hidden="true"
 			><path
 				d="M200,32H163.74a47.92,47.92,0,0,0-71.48,0H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm-72,0a32,32,0,0,1,32,32H96A32,32,0,0,1,128,32Zm72,184H56V48H82.75A47.93,47.93,0,0,0,80,64v8a8,8,0,0,0,8,8h80a8,8,0,0,0,8-8V64a47.93,47.93,0,0,0-2.75-16H200Z"
 			></path></svg
 		>
-		<h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No upcoming maintenance</h3>
+		<h3 class="mt-3 text-base font-semibold text-gray-900 dark:text-white">No upcoming maintenance</h3>
 		{#if stats && stats.total_tasks > 0}
-			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">You're all up to date, relax!</p>
+			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">You're all up to date.</p>
 		{:else}
-			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-				Get started by adding some equipment and tasks.
+			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+				Add equipment, then tasks, to see them here.
 			</p>
-			<div class="mt-6 flex flex-col items-center gap-4">
+			<div
+				class="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+			>
 				<button
-					class="w-fit rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+					type="button"
+					class="{ctaButtonClass} bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
 					disabled={!stats}
 					onclick={onAddEquipment}
 				>
-					{stats?.total_equipment === 0 ? 'Add your first equipment' : 'Add more equipment'}
+					{stats?.total_equipment === 0 ? 'Add your first equipment' : 'Add equipment'}
 				</button>
 				<button
-					class="w-fit rounded-lg bg-green-600 px-4 py-2 font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-25 dark:bg-green-700 dark:hover:bg-green-600"
+					type="button"
+					class="{ctaButtonClass} bg-emerald-600 text-white hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-40 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+					disabled={!stats || (stats !== null && stats.total_equipment === 0)}
 					onclick={onAddTask}
-					disabled={!stats || (stats !== null && stats?.total_equipment === 0)}
 				>
 					Add your first task
 				</button>
@@ -208,77 +107,72 @@
 		{/if}
 	</div>
 {:else}
-	<div class="overflow-hidden rounded-md bg-white shadow dark:bg-gray-800 dark:shadow-gray-900/20">
-		<ul class="divide-y divide-gray-200 dark:divide-gray-700">
-			{#each upcomingTasks as task (task.id)}
-				{@const equipmentName = getEquipmentName(task.equipment_id)}
-				{@const daysUntilDue = getDaysUntilDue(task.next_due_date || null)}
-				{@const isOverdue = daysUntilDue < 0}
+	<div
+		class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800 dark:shadow-gray-900/20"
+	>
+		<ul class="divide-y divide-gray-200 dark:divide-gray-700" role="list">
+			{#each sortedTasks as task, taskIndex (task.id)}
+				{@const bucket = getTaskDueBucket(task)}
+				{@const prevBucket: TaskDueBucket | null =
+					taskIndex > 0 ? getTaskDueBucket(sortedTasks[taskIndex - 1]!) : null}
+				{@const showBucketLabel = bucket !== prevBucket}
+				{@const dueDisplay = getDuePhrase(task, bucket)}
+				{@const isOverdue = bucket === 'overdue'}
+				{@const taskTypeName = getTaskTypeName(task.task_type_id)}
+
+				{#if showBucketLabel}
+					<li
+						class="list-none border-b border-gray-100 bg-gray-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400"
+					>
+						{BUCKET_LABELS[bucket]}
+					</li>
+				{/if}
 
 				<li
-					class="px-6 py-4 transition-colors {isOverdue
-						? 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-900/20'
-						: 'hover:bg-gray-50 dark:hover:bg-gray-700'}"
+					class="transition-colors {isOverdue
+						? 'bg-red-50/35 dark:bg-red-950/25'
+						: 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'}"
 				>
-					<div class="flex flex-wrap items-center justify-between gap-y-4">
-						<div class="flex items-center">
-							<div class="flex-shrink-0">
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600"
-								>
-									{@render taskIcon(task.task_type_id)}
-								</div>
+					<div
+						class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4"
+					>
+						<div class="flex min-w-0 gap-3">
+							<div
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700"
+								aria-hidden="true"
+							>
+								<TaskTypeIcon taskTypeId={task.task_type_id} />
 							</div>
-							<div class="ml-4">
-								<div class="flex items-center space-x-2">
-									<h3 class="text-lg font-medium text-gray-900 dark:text-white">
-										{task.title}
-									</h3>
-									{#if isOverdue}
-										<span
-											class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-200"
-										>
-											Overdue
-										</span>
-									{:else}
-										<span
-											class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {priorityColors[
-												task.priority as keyof typeof priorityColors
-											]} whitespace-nowrap capitalize"
-										>
-											{task.priority}
-										</span>
+							<div class="min-w-0 flex-1">
+								<p class={dueToneClass[dueDisplay.tone]}>{dueDisplay.text}</p>
+								<h3 class="mt-0.5 truncate text-base font-semibold text-gray-900 dark:text-white">
+									{task.title}
+								</h3>
+								<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+									<a
+										href="/equipment/{task.equipment_id}"
+										class="text-blue-600 hover:underline dark:text-blue-400"
+									>
+										{getEquipmentName(task.equipment_id)}
+									</a>
+									{#if taskTypeName}
+										<span class="text-gray-400 dark:text-gray-500"> · </span>
+										{taskTypeName}
 									{/if}
-								</div>
-								<p class="text-sm text-gray-600 dark:text-gray-300">
-									{equipmentName}
 								</p>
-								{#if task.description}
-									<p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+								{#if task.description?.trim()}
+									<p class="mt-1 line-clamp-1 text-xs text-gray-400 dark:text-gray-500">
 										{task.description}
 									</p>
 								{/if}
 							</div>
 						</div>
-						<div class="ml-auto flex min-w-fit items-center space-x-4">
-							<div class="text-right">
-								<p class="text-sm font-medium text-gray-900 dark:text-white">
-									{#if isOverdue}
-										{Math.abs(daysUntilDue)} days overdue
-									{:else if daysUntilDue === 0}
-										Due today
-									{:else}
-										Due in {daysUntilDue} days
-									{/if}
-								</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									{task.next_due_date
-										? formatDate(new Date(task.next_due_date))
-										: 'No date set'}
-								</p>
-							</div>
+						<div
+							class="flex w-full shrink-0 border-t border-gray-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0 dark:border-gray-700"
+						>
 							<button
-								class="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+								type="button"
+								class="min-h-10 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:focus-visible:ring-offset-gray-900 sm:w-auto sm:min-w-[7.5rem] sm:py-2"
 								onclick={() => onCompleteTask(task)}
 							>
 								Complete
