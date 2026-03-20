@@ -66,10 +66,10 @@
 					class="rounded-lg bg-white p-4 shadow md:p-6 dark:bg-gray-800 dark:shadow-gray-900/20"
 				>
 					<div class="flex h-full items-center gap-4">
-						<div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
+						<div class="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								class="h-6 w-6 text-green-600 dark:text-green-400"
+								class="h-6 w-6 text-emerald-600 dark:text-emerald-400"
 								fill="currentColor"
 								stroke="currentColor"
 								viewBox="0 0 256 256"
