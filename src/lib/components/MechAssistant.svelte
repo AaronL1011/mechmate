@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ActionConfirmation from './ActionConfirmation.svelte';
-	import { marked } from 'marked';
+	import { marked, Renderer } from 'marked';
 	import DOMPurify from 'dompurify';
 	import { tick } from 'svelte';
 
@@ -82,6 +82,13 @@
 
 	const voiceSupported = hasSpeechRecognition && (hasGetUserMedia || isMobile);
 
+	const markdownRenderer = new Renderer();
+	markdownRenderer.table = function (token) {
+		const html = Renderer.prototype.table.call(this, token);
+		return `<div class="mech-md-table-scroll max-w-full min-w-0 overflow-x-auto">${html}</div>`;
+	};
+
+	marked.use({ renderer: markdownRenderer });
 	marked.setOptions({ breaks: true, gfm: true });
 
 	function renderMarkdown(text: string): string {
@@ -651,13 +658,13 @@
 								</div>
 							{:else if msg.role === 'assistant'}
 								<!-- Assistant bubble: left-aligned -->
-								<div class="flex items-start gap-2.5">
+								<div class="flex min-w-0 items-start gap-2.5">
 									<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0" />
 									<div
-										class="max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+										class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 									>
 										<div
-											class="prose prose-sm prose-gray dark:prose-invert prose-p:my-1.5 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:rounded prose-code:bg-gray-100 prose-code:px-1 prose-code:text-blue-600 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:text-gray-900 dark:prose-code:bg-gray-700 dark:prose-code:text-blue-400 dark:prose-headings:text-gray-100 max-w-none text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+											class="prose prose-sm prose-gray dark:prose-invert prose-p:my-1.5 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:rounded prose-code:bg-gray-100 prose-code:px-1 prose-code:text-blue-600 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:text-gray-900 dark:prose-code:bg-gray-700 dark:prose-code:text-blue-400 dark:prose-headings:text-gray-100 max-w-none min-w-0 text-sm leading-relaxed text-gray-700 dark:text-gray-200"
 										>
 											{@html renderMarkdown(msg.content)}
 										</div>
@@ -733,10 +740,10 @@
 
 						<!-- Action confirmation rendered inline in thread -->
 						{#if pendingAction}
-							<div class="flex items-start gap-2.5">
+							<div class="flex min-w-0 max-w-full items-start gap-2.5">
 								<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0" />
 								<div
-									class="w-full max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+									class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 								>
 									<ActionConfirmation
 										action={pendingAction}
