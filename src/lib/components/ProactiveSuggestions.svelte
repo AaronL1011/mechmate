@@ -114,11 +114,11 @@
 					role="alert"
 				>
 					<div class="min-w-0 flex-1">
-						<h3 class="mb-1.5 font-medium text-amber-900 dark:text-amber-100">
+						<h3 class="mb-1.5 text-sm sm:text-base font-medium text-amber-900 dark:text-amber-100">
 							{item.title}
 						</h3>
 						<div
-							class="prose prose-sm max-w-none text-amber-900/90 dark:prose-invert dark:text-amber-100/90 [&_ul]:my-1 [&_li]:my-0.5"
+							class="prose prose-sm max-w-none text-amber-900/90 dark:prose-invert dark:text-amber-100/90 max-sm:[&_p]:text-[0.75rem] max-sm:[&_li]:text-[0.75rem] [&_ul]:my-1 [&_li]:my-0.5"
 						>
 							{@html renderMarkdown(item.content) || '&#8203;'}
 						</div>
