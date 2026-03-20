@@ -150,7 +150,7 @@
 								</h3>
 								<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
 									<a
-										href="/equipment/{task.equipment_id}"
+										href="/equipment/{task.equipment_id}/history"
 										class="text-blue-600 hover:underline dark:text-blue-400"
 									>
 										{getEquipmentName(task.equipment_id)}
@@ -168,13 +168,27 @@
 							</div>
 						</div>
 						<div
-							class="flex w-full shrink-0 border-t border-gray-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0 dark:border-gray-700"
+							class="flex w-full shrink-0 justify-end border-t border-gray-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0 dark:border-gray-700"
 						>
 							<button
 								type="button"
-								class="min-h-10 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:focus-visible:ring-offset-gray-900 sm:w-auto sm:min-w-[7.5rem] sm:py-2"
+								class="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/80 bg-white px-3 py-1.5 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/35 focus-visible:ring-offset-2 dark:border-emerald-700/80 dark:bg-gray-800 dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-gray-700 dark:focus-visible:ring-offset-gray-900"
 								onclick={() => onCompleteTask(task)}
 							>
+								<svg
+									class="h-4 w-4 shrink-0 opacity-90"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M5 13l4 4L19 7"
+									></path>
+								</svg>
 								Complete
 							</button>
 						</div>

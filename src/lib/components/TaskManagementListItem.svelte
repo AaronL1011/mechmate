@@ -121,9 +121,23 @@
 			{#if canComplete}
 				<button
 					type="button"
-					class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+					class="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/80 bg-white px-3 py-1.5 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-700/80 dark:bg-gray-800 dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-gray-700"
 					onclick={onComplete}
 				>
+					<svg
+						class="h-4 w-4 shrink-0 opacity-90"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M5 13l4 4L19 7"
+						></path>
+					</svg>
 					Complete
 				</button>
 			{/if}

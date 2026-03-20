@@ -193,7 +193,9 @@
 
 		{#if dueSoonTasks.length > 0}
 			<div class="mb-8 rounded-lg bg-white p-4 shadow dark:bg-gray-800 dark:shadow-gray-900/20">
-				<h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Due this week</h2>
+				<h2 class="mb-3 text-base font-semibold text-gray-900 sm:text-lg dark:text-white">
+					Due this week
+				</h2>
 				<ul class="space-y-2">
 					{#each dueSoonTasks as task (task.id)}
 						<li
@@ -212,9 +214,23 @@
 							</span>
 							<button
 								type="button"
-								class="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+								class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-200/80 bg-white/80 px-2.5 py-1 text-xs font-medium text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800/70 dark:bg-transparent dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/35"
 								onclick={() => openCompleteTaskModal(task)}
 							>
+								<svg
+									class="h-3.5 w-3.5 shrink-0 opacity-90"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M5 13l4 4L19 7"
+									></path>
+								</svg>
 								Complete
 							</button>
 						</li>
@@ -236,11 +252,9 @@
 		<!-- View Mode Toggle -->
 		<div class="mb-6 flex items-center justify-between">
 			<div class="flex items-center gap-3">
-				<h2 class="text-xl font-bold text-gray-900 lg:text-2xl dark:text-white">
-					Upcoming Tasks
-				</h2>
+				<h2 class="text-lg font-bold text-gray-900 lg:text-2xl dark:text-white">Upcoming</h2>
 				{#if settings?.upcoming_task_range_days}
-					<p class="translate-y-0.5 text-sm text-gray-400">
+					<p class="translate-y-0.5 text-xs text-gray-400 sm:text-sm">
 						{settings.upcoming_task_range_days} days
 					</p>
 				{/if}

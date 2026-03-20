@@ -29,9 +29,9 @@
 	{#if error}
 		<p class="text-red-600">{error}</p>
 	{:else}
-		<h1 class="mb-4 text-2xl font-bold text-gray-900">{equipmentName}</h1>
+		<h1 class="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">{equipmentName}</h1>
 		<img src={qrSrc} alt="QR code" width="200" height="200" class="border border-gray-200" />
-		<p class="mt-4 text-sm text-gray-500">Scan to open equipment</p>
+		<p class="mt-4 text-xs text-gray-500 sm:text-sm">Scan to open equipment</p>
 		<a href="/equipment/{equipmentId}/history" class="mt-2 text-blue-600 hover:underline"
 			>/equipment/{equipmentId}/history</a
 		>

@@ -448,8 +448,10 @@
 </svelte:head>
 
 <header class="mx-auto my-8 pl-4 max-w-4xl">
-	<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
-	<p class="mt-1 text-gray-600 dark:text-gray-300">Configure your Mechmate preferences</p>
+	<h1 class="text-xl font-bold text-gray-900 sm:text-2xl dark:text-white">Settings</h1>
+	<p class="mt-1 text-sm text-gray-600 sm:text-base dark:text-gray-300">
+		Configure your Mechmate preferences
+	</p>
 </header>
 
 <main class="mx-auto max-w-4xl">

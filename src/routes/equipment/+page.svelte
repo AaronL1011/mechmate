@@ -90,8 +90,10 @@
 </svelte:head>
 
 <header class="mx-auto my-8 pl-4 max-w-7xl">
-	<h1 class="text-2xl font-bold text-gray-900 lg:text-3xl dark:text-white">Equipment Management</h1>
-	<p class="mt-1 text-gray-600 dark:text-gray-300">Track inventory and export service history</p>
+	<h1 class="text-xl font-bold text-gray-900 lg:text-3xl dark:text-white">Equipment Management</h1>
+	<p class="mt-1 text-sm text-gray-600 lg:text-base dark:text-gray-300">
+		Track inventory and export service history
+	</p>
 </header>
 
 <main class="mx-auto max-w-7xl">
