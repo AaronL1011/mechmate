@@ -37,7 +37,7 @@
 </script>
 
 <li
-	class="px-5 py-5 transition-colors hover:bg-gray-50/80 sm:px-6 dark:hover:bg-gray-700/50"
+	class="overflow-hidden rounded-lg bg-white px-5 py-5 shadow transition-shadow hover:shadow-md sm:px-6 dark:bg-gray-800 dark:shadow-gray-900/20 dark:hover:shadow-lg dark:hover:shadow-gray-900/30"
 >
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
 		<div class="min-w-0 flex-1 space-y-4">

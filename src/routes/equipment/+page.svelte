@@ -166,20 +166,16 @@
 				</div>
 			</div>
 		{:else}
-			<div
-				class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800 dark:shadow-gray-900/20"
-			>
-				<ul class="divide-y divide-gray-200 dark:divide-gray-700">
-					{#each equipment as equipmentItem (equipmentItem.id)}
-						<EquipmentListItem
-							equipment={equipmentItem}
-							{equipmentTypes}
-							onEdit={openEditModal}
-							onDelete={openDeleteModal}
-						/>
-					{/each}
-				</ul>
-			</div>
+			<ul class="m-0 flex list-none flex-col gap-4 p-0">
+				{#each equipment as equipmentItem (equipmentItem.id)}
+					<EquipmentListItem
+						equipment={equipmentItem}
+						{equipmentTypes}
+						onEdit={openEditModal}
+						onDelete={openDeleteModal}
+					/>
+				{/each}
+			</ul>
 		{/if}
 	</main>
 </div>
