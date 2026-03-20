@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { AppShell } from '$lib/types/appShell';
+	import type { Equipment, Task } from '$lib/types/db.js';
 	import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
 	import AddTaskModal from '$lib/components/AddTaskModal.svelte';
 	import MechAssistant from '$lib/components/MechAssistant.svelte';
@@ -59,11 +60,11 @@
 		};
 	});
 
-	function handleEquipmentCreated(_event: CustomEvent) {
+	function handleEquipmentCreated(_equipment: Equipment) {
 		invalidateAll();
 	}
 
-	function handleTaskCreated(_event: CustomEvent) {
+	function handleTaskCreated(_task: Task) {
 		invalidateAll();
 	}
 </script>

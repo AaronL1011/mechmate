@@ -1,6 +1,20 @@
 <script lang="ts">
 	import type { Equipment, EquipmentType, UpdateEquipmentRequest } from '$lib/types/db.js';
 	import AutocompleteSelect from './AutocompleteSelect.svelte';
+	import ModalShell from './ModalShell.svelte';
+	import {
+		btnCancelClass,
+		btnPrimaryClass,
+		detailsSummaryClass,
+		errorAlertClass,
+		errorTextClass,
+		footerButtonRowClass,
+		inputClass,
+		labelClass,
+		responsiveTwoColGridClass
+	} from './modalFormStyles.js';
+
+	const FORM_ID = 'edit-equipment-form';
 
 	let {
 		equipmentUpdated,
@@ -31,6 +45,7 @@
 		tags: []
 	});
 
+	let typesLocal = $state<EquipmentType[]>([]);
 	let loading = $state(false);
 	let error = $state('');
 
@@ -51,6 +66,12 @@
 			return [];
 		}
 	}
+
+	$effect(() => {
+		if (isOpen) {
+			typesLocal = [...equipmentTypes];
+		}
+	});
 
 	$effect(() => {
 		if (equipment && isOpen) {
@@ -99,7 +120,7 @@
 				throw new Error(errorData.error || 'Failed to update equipment');
 			}
 
-			const updatedEquipment = await response.json();
+			const updatedEquipment = (await response.json()) as Equipment;
 			equipmentUpdated(updatedEquipment);
 			closeModal();
 		} catch (err) {
@@ -115,6 +136,9 @@
 
 			const equipmentTypeRes = await fetch('/api/equipment-types', {
 				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
 				body: JSON.stringify({ name })
 			});
 
@@ -126,8 +150,8 @@
 			const equipmentTypeData = (await equipmentTypeRes.json()) as { id: number; name: string };
 			formData.equipment_type_id = equipmentTypeData.id;
 
-			if (!equipmentTypes.find((et) => et.id === equipmentTypeData.id)) {
-				equipmentTypes = [equipmentTypeData, ...equipmentTypes];
+			if (!typesLocal.find((et) => et.id === equipmentTypeData.id)) {
+				typesLocal = [equipmentTypeData, ...typesLocal];
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create equipment type';
@@ -135,8 +159,6 @@
 	}
 
 	function closeModal() {
-		isOpen = false;
-		// Reset form
 		formData = {
 			name: '',
 			equipment_type_id: 0,
@@ -155,215 +177,182 @@
 		onCloseModal();
 	}
 
-	function handleBackdropClick(event: MouseEvent) {
-		if (event.target === event.currentTarget) {
-			closeModal();
-		}
+	function onFormSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		handleSubmit();
 	}
+
+	const shellOpen = $derived(isOpen && equipment != null);
 </script>
 
-{#if isOpen}
-	<div
-		class="fixed inset-0 z-50 flex h-dvh w-full items-center justify-center overflow-y-auto bg-gray-600/50 backdrop-blur-sm dark:bg-gray-900/50"
-		onclick={handleBackdropClick}
-		role="dialog"
-		aria-modal="true"
-		tabindex="-1"
-		onkeydown={(e) => e.key === 'Escape' && closeModal()}
-	>
-		<div
-			class="relative w-96 rounded-md border border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-900/50"
-		>
-			<div class="mt-3">
-				<div class="mb-4 flex items-center justify-between">
-					<h3 class="text-lg font-medium text-gray-900 dark:text-white">Edit Equipment</h3>
-					<button
-						type="button"
-						class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-						onclick={closeModal}
-						aria-label="Close"
-					>
-						<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<ModalShell open={shellOpen} onClose={closeModal} titleId="edit-equipment-modal-title" size="lg">
+	{#snippet title()}Edit Equipment{/snippet}
+
+	{#snippet children()}
+		{#if equipment}
+			<form id={FORM_ID} class="space-y-4" onsubmit={onFormSubmit}>
+				{#if error}
+					<div class={errorAlertClass}>
+						<p class={errorTextClass}>{error}</p>
+					</div>
+				{/if}
+
+				<div>
+					<label for="edit-eq-name" class={labelClass}>Name *</label>
+					<input
+						type="text"
+						id="edit-eq-name"
+						bind:value={formData.name}
+						class={inputClass}
+						placeholder="e.g., My Car, Coffee Machine"
+						required
+					/>
+				</div>
+
+				<AutocompleteSelect
+					options={typesLocal}
+					bind:value={formData.equipment_type_id}
+					onCreate={handleEquipmentTypeCreate}
+				/>
+
+				<div class={responsiveTwoColGridClass}>
+					<div>
+						<label for="edit-eq-current-usage" class={labelClass}>Current Usage</label>
+						<input
+							type="number"
+							id="edit-eq-current-usage"
+							bind:value={formData.current_usage_value}
+							class={inputClass}
+							placeholder="0"
+							min="0"
+							step="0.1"
+						/>
+					</div>
+
+					<div>
+						<label for="edit-eq-usage-unit" class={labelClass}>Unit *</label>
+						<input
+							type="text"
+							id="edit-eq-usage-unit"
+							bind:value={formData.usage_unit}
+							class={inputClass}
+							placeholder="e.g., km, hours"
+							required
+						/>
+					</div>
+				</div>
+
+				<details
+					class="rounded-lg border border-gray-200 dark:border-gray-600 [&[open]_summary_svg]:rotate-90"
+				>
+					<summary class="{detailsSummaryClass} px-3 py-2.5">
+						<svg
+							class="h-4 w-4 shrink-0 rotate-0 text-gray-500 transition-transform dark:text-gray-400"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
+								d="M9 5l7 7-7 7"
 							></path>
 						</svg>
-					</button>
-				</div>
-
-				<form onsubmit={handleSubmit} class="space-y-4">
-					{#if error}
-						<div
-							class="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
+						Additional details
+						<span class="font-normal text-gray-500 dark:text-gray-400"
+							>(make, model, IDs, location…)</span
 						>
-							<p class="text-sm text-red-800 dark:text-red-200">{error}</p>
+					</summary>
+					<div class="space-y-4 border-t border-gray-100 px-3 py-4 dark:border-gray-700">
+						<div class={responsiveTwoColGridClass}>
+							<div>
+								<label for="edit-eq-make" class={labelClass}>Make</label>
+								<input
+									type="text"
+									id="edit-eq-make"
+									bind:value={formData.make}
+									class={inputClass}
+									placeholder="e.g., Toyota, Breville"
+								/>
+							</div>
+
+							<div>
+								<label for="edit-eq-model" class={labelClass}>Model</label>
+								<input
+									type="text"
+									id="edit-eq-model"
+									bind:value={formData.model}
+									class={inputClass}
+									placeholder="e.g., Camry, BES870XL"
+								/>
+							</div>
 						</div>
-					{/if}
 
-					<div>
-						<label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Name *</label
-						>
-						<input
-							type="text"
-							id="name"
-							bind:value={formData.name}
-							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-							placeholder="e.g., My Car, Coffee Machine"
-							required
-						/>
-					</div>
+						<div class={responsiveTwoColGridClass}>
+							<div>
+								<label for="edit-eq-year" class={labelClass}>Year</label>
+								<input
+									type="number"
+									id="edit-eq-year"
+									bind:value={formData.year}
+									class={inputClass}
+									placeholder="e.g., 2020"
+									min="1900"
+									max={new Date().getFullYear() + 1}
+								/>
+							</div>
 
-					<AutocompleteSelect
-						options={equipmentTypes}
-						bind:value={formData.equipment_type_id}
-						onCreate={handleEquipmentTypeCreate}
-					/>
+							<div>
+								<label for="edit-eq-serial" class={labelClass}>Serial Number</label>
+								<input
+									type="text"
+									id="edit-eq-serial"
+									bind:value={formData.serial_number}
+									class={inputClass}
+									placeholder="Optional"
+								/>
+							</div>
+						</div>
 
-					<div class="grid grid-cols-2 gap-4">
 						<div>
-							<label for="make" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Make</label
-							>
+							<label for="edit-eq-purchase" class={labelClass}>Purchase Date</label>
+							<input
+								type="date"
+								id="edit-eq-purchase"
+								bind:value={formData.purchase_date}
+								class={inputClass}
+							/>
+						</div>
+
+						<div>
+							<label for="edit-eq-location" class={labelClass}>Location</label>
 							<input
 								type="text"
-								id="make"
-								bind:value={formData.make}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="e.g., Toyota, Breville"
-							/>
-						</div>
-
-						<div>
-							<label for="model" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Model</label
-							>
-							<input
-								type="text"
-								id="model"
-								bind:value={formData.model}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="e.g., Camry, BES870XL"
+								id="edit-eq-location"
+								bind:value={formData.location}
+								class={inputClass}
+								placeholder="e.g. Garage, Shed"
 							/>
 						</div>
 					</div>
+				</details>
+			</form>
+		{/if}
+	{/snippet}
 
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="year" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Year</label
-							>
-							<input
-								type="number"
-								id="year"
-								bind:value={formData.year}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="e.g., 2020"
-								min="1900"
-								max={new Date().getFullYear() + 1}
-							/>
-						</div>
-
-						<div>
-							<label
-								for="serial_number"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Serial Number</label
-							>
-							<input
-								type="text"
-								id="serial_number"
-								bind:value={formData.serial_number}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="Optional"
-							/>
-						</div>
-					</div>
-
-					<div>
-						<label
-							for="purchase_date"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Purchase Date</label
-						>
-						<input
-							type="date"
-							id="purchase_date"
-							bind:value={formData.purchase_date}
-							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-						/>
-					</div>
-
-					<div>
-						<label
-							for="location"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Location</label
-						>
-						<input
-							type="text"
-							id="location"
-							bind:value={formData.location}
-							class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-							placeholder="e.g. Garage, Shed"
-						/>
-					</div>
-
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label
-								for="current_usage_value"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Current Usage</label
-							>
-							<input
-								type="number"
-								id="current_usage_value"
-								bind:value={formData.current_usage_value}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="0"
-								min="0"
-								step="0.1"
-							/>
-						</div>
-
-						<div>
-							<label
-								for="usage_unit"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit *</label
-							>
-							<input
-								type="text"
-								id="usage_unit"
-								bind:value={formData.usage_unit}
-								class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-								placeholder="e.g., km, hours"
-								required
-							/>
-						</div>
-					</div>
-
-					<div class="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onclick={closeModal}
-							class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							disabled={loading}
-							class="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
-						>
-							{loading ? 'Updating...' : 'Update Equipment'}
-						</button>
-					</div>
-				</form>
-			</div>
+	{#snippet footer()}
+		<div class={footerButtonRowClass}>
+			<button type="button" class={btnCancelClass} onclick={closeModal}>Cancel</button>
+			<button
+				type="submit"
+				form={FORM_ID}
+				class={btnPrimaryClass}
+				disabled={loading || !equipment}
+			>
+				{loading ? 'Updating...' : 'Update Equipment'}
+			</button>
 		</div>
-	</div>
-{/if}
+	{/snippet}
+</ModalShell>

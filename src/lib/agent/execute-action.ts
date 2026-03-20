@@ -5,6 +5,10 @@ import {
 	taskRepository,
 	maintenanceLogRepository
 } from '$lib/repositories.js';
+import {
+	preserveLaterNextDueSchedule,
+	preserveMoreRecentLastCompleted
+} from '$lib/utils/preserveLaterNextDue.js';
 import type { ActionResult } from './executor.js';
 
 export async function executeConfirmedAction(
@@ -97,22 +101,34 @@ async function completeTask(db: Kysely<Database>, data: any) {
 
 	const maintenanceLog = await maintenanceLogRepository.create(db, logData);
 
+	const { lastCompletedDate, lastCompletedUsage } = preserveMoreRecentLastCompleted(
+		task,
+		data.completed_date,
+		data.completed_usage_value
+	);
+
 	let nextDueDate: string | undefined;
 	let nextDueUsageValue: number | undefined;
 
 	if (task.time_interval_days) {
-		const nextDate = new Date(data.completed_date);
+		const nextDate = new Date(lastCompletedDate);
 		nextDate.setDate(nextDate.getDate() + task.time_interval_days);
 		nextDueDate = nextDate.toISOString().split('T')[0];
 	}
 
-	if (task.usage_interval && data.completed_usage_value) {
-		nextDueUsageValue = data.completed_usage_value + task.usage_interval;
+	if (task.usage_interval && lastCompletedUsage !== undefined) {
+		nextDueUsageValue = lastCompletedUsage + task.usage_interval;
 	}
 
+	({ nextDueDate, nextDueUsageValue } = preserveLaterNextDueSchedule(
+		task,
+		nextDueDate,
+		nextDueUsageValue
+	));
+
 	const taskUpdates = {
-		last_completed_date: data.completed_date,
-		last_completed_usage_value: data.completed_usage_value,
+		last_completed_date: lastCompletedDate,
+		last_completed_usage_value: lastCompletedUsage,
 		next_due_date: nextDueDate,
 		next_due_usage_value: nextDueUsageValue,
 		status: 'pending' as const
