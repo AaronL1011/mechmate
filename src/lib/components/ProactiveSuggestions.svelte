@@ -130,7 +130,7 @@
 								onclick={() => approve(item.id, item.agent_action!)}
 								disabled={approvingIds.has(item.id) || dismissingIds.has(item.id)}
 								aria-label="Approve {item.title}"
-								class="text-sm lg:text-base rounded p-1 text-emerald-600 opacity-70 transition-opacity hover:bg-emerald-200/50 hover:opacity-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-800/50"
+								class="text-sm lg:text-base rounded p-1 px-2 text-emerald-600 opacity-70 transition-opacity hover:bg-emerald-200/50 hover:opacity-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-800/50"
 							>
 								action
 							</button>
@@ -140,7 +140,7 @@
 							onclick={() => dismiss(item.id)}
 							disabled={dismissingIds.has(item.id)}
 							aria-label="Dismiss {item.title}"
-							class="text-sm lg:text-base rounded p-1 text-amber-600 opacity-70 transition-opacity hover:bg-amber-200/50 hover:opacity-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-800/50"
+							class="text-sm lg:text-base rounded p-1 px-2 text-amber-600 opacity-70 transition-opacity hover:bg-amber-200/50 hover:opacity-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-800/50"
 						>
 							dismiss
 						</button>

@@ -7,6 +7,7 @@ import type {
 	GlobalSettingsValues,
 	ProactiveSuggestion
 } from '$lib/types/db.js';
+import type { AppShell } from '$lib/types/appShell';
 
 export interface DashboardLoadData {
 	stats: DashboardStats | null;
@@ -21,55 +22,28 @@ export interface DashboardLoadData {
 }
 
 export const load = async ({
+	parent,
 	fetch
 }: {
+	parent: () => Promise<{ shell: AppShell }>;
 	fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }): Promise<DashboardLoadData> => {
+	const { shell } = await parent();
+
 	try {
-		const [
-			statsRes,
-			tasksRes,
-			equipmentRes,
-			taskTypesRes,
-			equipmentTypesRes,
-			dueSoonRes,
-			suggestionsRes,
-			settingsRes
-		] = await Promise.all([
-			fetch('/api/dashboard'),
+		const [tasksRes, dueSoonRes, suggestionsRes, settingsRes] = await Promise.all([
 			fetch('/api/tasks?type=upcoming'),
-			fetch('/api/equipment'),
-			fetch('/api/task-types'),
-			fetch('/api/equipment-types'),
 			fetch('/api/dashboard/due-soon?days=7'),
 			fetch('/api/agent/suggestions'),
 			fetch('/api/settings')
 		]);
 
-		if (
-			!statsRes.ok ||
-			!tasksRes.ok ||
-			!equipmentRes.ok ||
-			!taskTypesRes.ok ||
-			!equipmentTypesRes.ok ||
-			!settingsRes.ok
-		) {
+		if (!tasksRes.ok || !settingsRes.ok) {
 			throw new Error('Failed to load dashboard data');
 		}
 
-		const [
-			stats,
-			upcomingTasks,
-			equipment,
-			taskTypes,
-			equipmentTypes,
-			settings
-		] = await Promise.all([
-			statsRes.json() as Promise<DashboardStats>,
+		const [upcomingTasks, settings] = await Promise.all([
 			tasksRes.json() as Promise<Task[]>,
-			equipmentRes.json() as Promise<Equipment[]>,
-			taskTypesRes.json() as Promise<TaskType[]>,
-			equipmentTypesRes.json() as Promise<EquipmentType[]>,
 			settingsRes.json() as Promise<GlobalSettingsValues>
 		]);
 
@@ -81,11 +55,11 @@ export const load = async ({
 			: [];
 
 		return {
-			stats,
+			stats: shell.stats,
+			equipment: shell.equipment,
+			taskTypes: shell.taskTypes,
+			equipmentTypes: shell.equipmentTypes,
 			upcomingTasks,
-			equipment,
-			taskTypes,
-			equipmentTypes,
 			dueSoonTasks,
 			proactiveSuggestions,
 			settings
@@ -93,11 +67,11 @@ export const load = async ({
 	} catch (err) {
 		console.error('Dashboard load error:', err);
 		return {
-			stats: null,
+			stats: shell.stats,
+			equipment: shell.equipment,
+			taskTypes: shell.taskTypes,
+			equipmentTypes: shell.equipmentTypes,
 			upcomingTasks: [],
-			equipment: [],
-			taskTypes: [],
-			equipmentTypes: [],
 			dueSoonTasks: [],
 			proactiveSuggestions: [],
 			settings: {

@@ -119,15 +119,12 @@
 		class="mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-900/20"
 		aria-labelledby="equipment-details-heading"
 	>
-		<h2 id="equipment-details-heading" class="mb-5 text-lg font-semibold text-gray-900 dark:text-white">
+		<h2 id="equipment-details-heading" class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
 			Equipment details
 		</h2>
 
 		<div class="space-y-6">
 			<div>
-				<h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-					Identity
-				</h3>
 				<div class="space-y-3">
 					<span
 						class="inline-flex rounded-md bg-gray-200/80 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-gray-600 dark:bg-gray-600/60 dark:text-gray-300"
