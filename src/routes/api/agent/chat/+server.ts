@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const conversation_history: LLMMessage[] =
 			requestSessionId && sessionId === requestSessionId
 				? await sessionStore.getLastTurns(locals.db, sessionId)
-				: body.conversation_history ?? [];
+				: (body.conversation_history ?? []);
 
 		const executor = new FunctionExecutor({ db: locals.db });
 		const contextData: Record<string, unknown> = {};
@@ -53,11 +53,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const [equipmentTypes, taskTypes, unitSetting, toneSetting] = await Promise.all([
 				executor.executeFunction('get_equipment_types', {}),
 				executor.executeFunction('get_task_types', {}),
-				globalSettingsRepository.getTypedValue(
-					locals.db,
-					'preferred_measurement_system',
-					'metric'
-				),
+				globalSettingsRepository.getTypedValue(locals.db, 'preferred_measurement_system', 'metric'),
 				globalSettingsRepository.getTypedValue(
 					locals.db,
 					'assistant_tone',
@@ -75,9 +71,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (context) contextData.user_context = context;
 
-		const systemPrompt = getInteractiveSystemPrompt(
-			contextData.assistant_tone as string
-		);
+		const systemPrompt = getInteractiveSystemPrompt(contextData.assistant_tone as string);
 		const messages: LLMMessage[] = [
 			{ role: 'system', content: systemPrompt },
 			...(Object.keys(contextData).length > 0
@@ -92,13 +86,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{ role: 'user', content: prompt }
 		];
 
-		const result = await runAgentTurn(
-			locals.db,
-			messages,
-			executor,
-			systemPrompt,
-			{ maxIterations: 5 }
-		);
+		const result = await runAgentTurn(locals.db, messages, executor, systemPrompt, {
+			maxIterations: 5
+		});
 
 		if (result.error) {
 			return json(
@@ -113,8 +103,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const newTurns =
-			result.conversationHistory?.slice(messages.length - 1) ?? [];
+		const newTurns = result.conversationHistory?.slice(messages.length - 1) ?? [];
 		for (const msg of newTurns) {
 			const content = typeof msg.content === 'string' ? msg.content : '';
 			await sessionStore.appendTurn(
@@ -130,11 +119,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (result.actionsForConfirmation?.length) {
 			const action = result.actionsForConfirmation[0];
 			const actionId = uuidv4();
+			const pendingTtlMs = action.entity === 'task_batch' ? 10 * 60 * 1000 : undefined;
 			await pendingActions.createPendingAction(
 				locals.db,
 				actionId,
 				action,
-				sessionId
+				sessionId,
+				pendingTtlMs
 			);
 			return json({
 				success: true,

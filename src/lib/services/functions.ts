@@ -10,6 +10,8 @@ import {
 	globalSettingsRepository
 } from '../repositories.js';
 import { runProactiveAgent } from '../agent/proactive.js';
+import { buildBootstrapTasksForEquipment } from '../agent/bootstrap-schedule-templates.js';
+import { enrichBootstrapTasksWithLlm } from '../agent/bootstrap-task-copy-enrichment.js';
 import { getAssistantToneContext } from '../agent/prompts.js';
 import type { GlobalSettingsValues } from '../types/db.js';
 
@@ -19,7 +21,7 @@ export interface FunctionContext {
 
 export interface ActionResult {
 	type: 'create' | 'update' | 'delete' | 'query';
-	entity: 'equipment' | 'task' | 'maintenance_log';
+	entity: 'equipment' | 'task' | 'task_batch' | 'maintenance_log';
 	data?: any;
 	result?: any;
 	error?: string;
@@ -314,6 +316,21 @@ export const taskFunctions: LLMFunction[] = [
 			},
 			required: ['task_id']
 		}
+	},
+	{
+		name: 'propose_bootstrap_service_schedule',
+		description:
+			'Propose a starter set of maintenance tasks for one equipment item based on its equipment type. Skips task types already on that equipment and types missing from the database. The user must confirm in the UI before tasks are created. Use after identifying equipment_id (e.g. via get_equipment_list or search_equipment).',
+		parameters: {
+			type: 'object',
+			properties: {
+				equipment_id: {
+					type: 'number',
+					description: 'ID of the equipment to bootstrap tasks for'
+				}
+			},
+			required: ['equipment_id']
+		}
 	}
 ];
 
@@ -482,6 +499,8 @@ export class FunctionExecutor {
 					return await this.updateTask(args.task_id, args.updates);
 				case 'delete_task':
 					return await this.deleteTask(args.task_id);
+				case 'propose_bootstrap_service_schedule':
+					return await this.proposeBootstrapServiceSchedule(args.equipment_id);
 
 				// Maintenance log functions
 				case 'get_maintenance_logs':
@@ -625,6 +644,70 @@ export class FunctionExecutor {
 			entity: 'task',
 			data,
 			confirmation_message: `Create task "${data.title}" for ${equipment.name}?`,
+			requires_confirmation: true
+		};
+	}
+
+	private async proposeBootstrapServiceSchedule(equipmentId: number): Promise<ActionResult> {
+		if (equipmentId == null || Number.isNaN(Number(equipmentId))) {
+			throw new Error('equipment_id is required');
+		}
+		const equipment = await equipmentRepository.getById(this.context.db, equipmentId);
+		if (!equipment) {
+			throw new Error(`Equipment with ID ${equipmentId} not found`);
+		}
+
+		const [taskTypes, existingTasks] = await Promise.all([
+			taskTypeRepository.getAll(this.context.db),
+			taskRepository.getByEquipmentId(this.context.db, equipmentId)
+		]);
+
+		const bootstrapBuilt = buildBootstrapTasksForEquipment(
+			equipmentId,
+			equipment.equipment_type_id,
+			taskTypes,
+			existingTasks
+		);
+		const { skipped_unresolved_type_names, skipped_duplicate_task_type_ids } = bootstrapBuilt;
+		let tasks = bootstrapBuilt.tasks;
+
+		const existing_task_type_ids = [...new Set(existingTasks.map((t) => t.task_type_id))];
+
+		if (tasks.length === 0) {
+			return {
+				type: 'query',
+				entity: 'task',
+				result: {
+					nothing_to_create: true,
+					equipment_id: equipmentId,
+					equipment_name: equipment.name,
+					skipped_unresolved_type_names,
+					skipped_duplicate_task_type_ids,
+					existing_task_type_ids
+				},
+				requires_confirmation: false
+			};
+		}
+
+		const equipmentTypeRow = await equipmentTypeRepository.getById(
+			this.context.db,
+			equipment.equipment_type_id
+		);
+		const equipmentTypeName = equipmentTypeRow?.name ?? 'other';
+		const taskTypeById = new Map(taskTypes.map((tt) => [tt.id, tt]));
+		tasks = await enrichBootstrapTasksWithLlm(equipment, equipmentTypeName, tasks, taskTypeById);
+
+		return {
+			type: 'create',
+			entity: 'task_batch',
+			data: {
+				equipment_id: equipmentId,
+				equipment_name: equipment.name,
+				tasks,
+				skipped_unresolved_type_names,
+				skipped_duplicate_task_type_ids
+			},
+			confirmation_message: `Create ${tasks.length} maintenance task${tasks.length === 1 ? '' : 's'} for "${equipment.name}"?`,
 			requires_confirmation: true
 		};
 	}

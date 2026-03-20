@@ -3,7 +3,7 @@
 
 	interface ActionResult {
 		type: 'create' | 'update' | 'delete' | 'query';
-		entity: 'equipment' | 'task' | 'maintenance_log';
+		entity: 'equipment' | 'task' | 'task_batch' | 'maintenance_log';
 		data?: any;
 		confirmation_message?: string;
 	}
@@ -95,6 +95,10 @@
 			}
 			case 'task': {
 				return d.title ? String(d.title) : 'Task';
+			}
+			case 'task_batch': {
+				const n = Array.isArray(d.tasks) ? d.tasks.length : 0;
+				return n ? `${n} proposed task${n === 1 ? '' : 's'}` : 'Task batch';
 			}
 			case 'maintenance_log': {
 				if (d.notes && String(d.notes).trim()) {
@@ -377,6 +381,8 @@
 		if (entity === 'equipment' && action.type === 'create') {
 			const template = getEquipmentTemplate();
 			return { ...template, ...data };
+		} else if (entity === 'task_batch' && action.type === 'create') {
+			return structuredClone(data);
 		} else if (entity === 'task' && action.type === 'create') {
 			const template = getTaskTemplate();
 			return { ...template, ...data };
@@ -409,11 +415,27 @@
 			editedData[fieldKey] = value;
 		}
 	}
+
+	function taskBatchCadenceLine(task: Record<string, unknown>): string {
+		const typeLabel =
+			typeof task.task_type_id === 'number'
+				? String(resolveValue('task_type_id', task.task_type_id))
+				: '';
+		const parts: string[] = [];
+		if (typeLabel) parts.push(typeLabel);
+		if (task.time_interval_days != null) parts.push(`every ${task.time_interval_days} days`);
+		if (task.usage_interval != null) parts.push(`every ${task.usage_interval} usage units`);
+		if (task.priority) parts.push(String(task.priority));
+		return parts.join(' · ');
+	}
+
+	function taskTypeNameById(id: number): string {
+		const t = taskTypes.find((x) => x.id === id);
+		return t ? t.name : `#${id}`;
+	}
 </script>
 
-<article
-	class="font-sans flex min-w-0 max-w-full flex-col gap-3 text-gray-900 dark:text-gray-100"
->
+<article class="flex max-w-full min-w-0 flex-col gap-3 font-sans text-gray-900 dark:text-gray-100">
 	<header class="min-w-0 space-y-1.5">
 		<div class="flex flex-wrap items-center gap-2">
 			<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
@@ -421,14 +443,14 @@
 			</h3>
 			{#if isDirty()}
 				<span
-					class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+					class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-amber-900 uppercase dark:bg-amber-900/40 dark:text-amber-200"
 				>
 					Edited
 				</span>
 			{/if}
 		</div>
 		<p
-			class="text-sm leading-snug break-words text-gray-600 line-clamp-4 dark:text-gray-300"
+			class="line-clamp-4 text-sm leading-snug break-words text-gray-600 dark:text-gray-300"
 			title={getSummaryText()}
 		>
 			{getSummaryText()}
@@ -443,7 +465,13 @@
 			aria-expanded="false"
 			aria-controls={FIELDS_PANEL_ID}
 		>
-			<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+			<svg
+				class="h-4 w-4 shrink-0"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+			>
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
@@ -451,7 +479,7 @@
 					d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
 				/>
 			</svg>
-			Edit details
+			{action.entity === 'task_batch' ? 'View proposed tasks' : 'Edit details'}
 		</button>
 	{/if}
 
@@ -463,8 +491,8 @@
 			aria-label="Action fields"
 		>
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
-					>Details</span
+				<span class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400"
+					>{action.entity === 'task_batch' ? 'Proposed tasks' : 'Details'}</span
 				>
 				<button
 					type="button"
@@ -477,19 +505,51 @@
 				</button>
 			</div>
 
-			{#if action.data && !isLoading}
+			{#if action.entity === 'task_batch' && action.data && Array.isArray(action.data.tasks) && !isLoading}
 				<div
-					class="scrollbar-hidden max-h-[min(50vh,18rem)] min-w-0 overflow-y-auto overflow-x-hidden pr-0.5"
+					class="scrollbar-hidden max-h-[min(50vh,18rem)] min-w-0 space-y-3 overflow-x-hidden overflow-y-auto pr-0.5 text-sm"
+				>
+					<ul class="list-inside list-decimal space-y-4 text-gray-800 dark:text-gray-200">
+						{#each action.data.tasks as task, i (`batch-task-${i}`)}
+							<li class="pl-1">
+								<div class="font-medium break-words text-gray-900 dark:text-gray-100">
+									{task.title != null ? String(task.title) : 'Task'}
+								</div>
+								<div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+									{taskBatchCadenceLine(task)}
+								</div>
+								{#if task.description != null && String(task.description).trim()}
+									<p
+										class="mt-1.5 max-h-32 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap text-gray-600 dark:text-gray-300"
+									>
+										{String(task.description).trim()}
+									</p>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+					{#if action.data.skipped_duplicate_task_type_ids?.length}
+						<p class="text-xs text-gray-600 dark:text-gray-400">
+							Skipped (already on this equipment):
+							{action.data.skipped_duplicate_task_type_ids.map(taskTypeNameById).join(', ')}.
+						</p>
+					{/if}
+					{#if action.data.skipped_unresolved_type_names?.length}
+						<p class="text-xs text-amber-800 dark:text-amber-200/90">
+							Not in your task types list (skipped):
+							{action.data.skipped_unresolved_type_names.join(', ')}.
+						</p>
+					{/if}
+				</div>
+			{:else if action.data && !isLoading}
+				<div
+					class="scrollbar-hidden max-h-[min(50vh,18rem)] min-w-0 overflow-x-hidden overflow-y-auto pr-0.5"
 				>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						{#each formatData(action.data) as item (item.fieldKey)}
-							{@const inputType = item.editable
-								? getInputType(item.fieldKey, item.value)
-								: 'text'}
+							{@const inputType = item.editable ? getInputType(item.fieldKey, item.value) : 'text'}
 							{@const full = isFullWidthField(item.fieldKey, inputType)}
-							<div
-								class="flex min-w-0 flex-col gap-1.5 {full ? 'sm:col-span-2' : ''}"
-							>
+							<div class="flex min-w-0 flex-col gap-1.5 {full ? 'sm:col-span-2' : ''}">
 								<label
 									class="text-[11px] font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400"
 									for={fieldDomId(item.fieldKey)}
@@ -577,8 +637,7 @@
 														id={index === 0 ? fieldDomId(item.fieldKey) : undefined}
 														type="text"
 														value={part}
-														oninput={(e) =>
-															updatePart(index, (e.target as HTMLInputElement).value)}
+														oninput={(e) => updatePart(index, (e.target as HTMLInputElement).value)}
 														placeholder="Part name"
 														class="{controlClass} flex-1"
 													/>
@@ -589,7 +648,12 @@
 														aria-label="Remove part"
 														title="Remove part"
 													>
-														<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<svg
+															class="h-4 w-4"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24"
+														>
 															<path
 																stroke-linecap="round"
 																stroke-linejoin="round"
@@ -678,6 +742,8 @@
 				<div class="flex justify-center py-2">
 					<span class="text-sm text-gray-500 dark:text-gray-400">Loading details…</span>
 				</div>
+			{:else if action.entity === 'task_batch'}
+				<p class="text-sm text-gray-500 dark:text-gray-400">No task list available.</p>
 			{/if}
 
 			<div class="min-w-0">

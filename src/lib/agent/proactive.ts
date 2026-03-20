@@ -2,10 +2,51 @@ import { createHash } from 'crypto';
 import { sql } from 'kysely';
 import type { Kysely } from 'kysely';
 import type { Database, ProactiveSuggestion } from '$lib/types/db.js';
+import { equipmentRepository } from '$lib/repositories.js';
 import { runAgentTurn, type ResponseOutputFormat } from './runtime.js';
 import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
+
+const PROACTIVE_MAX_SECTIONS = 4;
+const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks — ';
+
+async function getEquipmentWithNoTasks(
+	db: Kysely<Database>
+): Promise<Array<{ id: number; name: string }>> {
+	const equipment = await equipmentRepository.getAll(db);
+	if (equipment.length === 0) return [];
+	const rows = await db.selectFrom('tasks').select('equipment_id').distinct().execute();
+	const withTasks = new Set(rows.map((r) => r.equipment_id));
+	return equipment
+		.filter((e) => !withTasks.has(e.id))
+		.map((e) => ({ id: e.id, name: e.name }))
+		.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function buildStarterTaskSections(
+	bareEquipment: Array<{ id: number; name: string }>,
+	existingSuggestions: Array<{ title: string; content: string }>
+): ProactiveSection[] {
+	const sections: ProactiveSection[] = [];
+	for (const eq of bareEquipment) {
+		const title = `${STARTER_SECTION_TITLE_PREFIX}${eq.name}`;
+		if (existingSuggestions.some((s) => s.title === title)) continue;
+		sections.push({
+			title,
+			content: `**${eq.name}** has no maintenance tasks yet. Want to have Mech draft a starter schedule you can review and confirm?`,
+			agent_action: `Propose a starter maintenance schedule for ${eq.name} (equipment id: ${eq.id}).`
+		});
+	}
+	return sections;
+}
+
+function mergeProactiveSections(
+	starterSections: ProactiveSection[],
+	llmSections: ProactiveSection[]
+): ProactiveSection[] {
+	return [...starterSections, ...llmSections].slice(0, PROACTIVE_MAX_SECTIONS);
+}
 
 export interface ProactiveSection {
 	title: string;
@@ -106,25 +147,33 @@ export async function runProactiveAgent(
 
 	if (result.error) {
 		console.error('Proactive agent error:', result.error);
-		return null;
 	}
 
 	const structured = result.structuredMessage as { sections?: ProactiveSection[] } | undefined;
 	const sections = structured?.sections;
-	const text = result.message ?? null;
 
-	if (sections && Array.isArray(sections) && sections.length > 0) {
-		const validSections = sections.filter(
-			(s): s is ProactiveSection =>
-				typeof s === 'object' &&
-				s !== null &&
-				typeof (s as ProactiveSection).title === 'string' &&
-				typeof (s as ProactiveSection).content === 'string'
-		);
-		if (validSections.length > 0) {
-			await storeProactiveResults(db, validSections, currentHash);
-			return JSON.stringify(validSections);
-		}
+	const llmSections =
+		result.error || !Array.isArray(sections)
+			? []
+			: sections.filter(
+					(s): s is ProactiveSection =>
+						typeof s === 'object' &&
+						s !== null &&
+						typeof (s as ProactiveSection).title === 'string' &&
+						typeof (s as ProactiveSection).content === 'string'
+				);
+
+	const bareEquipment = await getEquipmentWithNoTasks(db);
+	const starterSections = buildStarterTaskSections(bareEquipment, existingSuggestions);
+	const merged = mergeProactiveSections(starterSections, llmSections);
+
+	if (merged.length > 0) {
+		await storeProactiveResults(db, merged, currentHash);
+		return JSON.stringify(merged);
+	}
+
+	if (result.error) {
+		return null;
 	}
 
 	return 'Could not generate proactive suggestions';
@@ -135,9 +184,12 @@ export async function storeProactiveResults(
 	sections: ProactiveSection[],
 	contentHash: string
 ): Promise<void> {
+	// Insert last-to-first so typical `orderBy(id desc)` feeds match merge order (starters before LLM sections).
 	await db
 		.insertInto('proactive_suggestions')
-		.values(sections.map(s => ({ result: JSON.stringify(s), content_hash: contentHash })))
+		.values(
+			[...sections].reverse().map((s) => ({ result: JSON.stringify(s), content_hash: contentHash }))
+		)
 		.execute();
 }
 

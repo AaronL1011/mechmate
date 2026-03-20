@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { Database } from '$lib/types/db.js';
+import type { Database, Task } from '$lib/types/db.js';
 import {
 	equipmentRepository,
 	taskRepository,
@@ -20,6 +20,8 @@ export async function executeConfirmedAction(
 			return executeEquipmentAction(db, action);
 		case 'task':
 			return executeTaskAction(db, action);
+		case 'task_batch':
+			return executeTaskBatchAction(db, action);
 		case 'maintenance_log':
 			return executeMaintenanceLogAction(db, action);
 		default:
@@ -28,6 +30,11 @@ export async function executeConfirmedAction(
 }
 
 export function getSuccessMessage(action: ActionResult): string {
+	if (action.entity === 'task_batch' && action.type === 'create') {
+		const n = Array.isArray(action.data?.tasks) ? action.data.tasks.length : 0;
+		return `${n} maintenance task${n === 1 ? '' : 's'} created successfully`;
+	}
+
 	const entity = action.entity.replace('_', ' ');
 
 	switch (action.type) {
@@ -68,6 +75,17 @@ async function executeTaskAction(db: Kysely<Database>, action: ActionResult) {
 		default:
 			throw new Error(`Unknown task action: ${action.type}`);
 	}
+}
+
+async function executeTaskBatchAction(db: Kysely<Database>, action: ActionResult) {
+	if (action.type !== 'create' || !action.data?.tasks || !Array.isArray(action.data.tasks)) {
+		throw new Error('Invalid task_batch action');
+	}
+	const created: Task[] = [];
+	for (const taskPayload of action.data.tasks) {
+		created.push(await taskRepository.create(db, taskPayload));
+	}
+	return { tasks: created, count: created.length };
 }
 
 async function executeMaintenanceLogAction(db: Kysely<Database>, action: ActionResult) {

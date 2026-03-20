@@ -411,6 +411,16 @@ export const taskRepository = {
 		return db.selectFrom('tasks').selectAll().where('id', '=', id).executeTakeFirst();
 	},
 
+	getByEquipmentId: (db: Kysely<Database>, equipmentId: number): Promise<Task[]> => {
+		return db
+			.selectFrom('tasks')
+			.selectAll()
+			.where('equipment_id', '=', equipmentId)
+			.orderBy('next_due_date')
+			.orderBy('next_due_usage_value')
+			.execute();
+	},
+
 	getWithDetails: async (
 		db: Kysely<Database>,
 		id: number
@@ -441,7 +451,8 @@ export const taskRepository = {
 			next_due_date: task.next_due_date,
 			priority: task.priority,
 			status: task.status,
-			remind_days_before: (task as Record<string, unknown>).remind_days_before as Task['remind_days_before'],
+			remind_days_before: (task as Record<string, unknown>)
+				.remind_days_before as Task['remind_days_before'],
 			created_at: task.created_at,
 			updated_at: task.updated_at
 		};
@@ -710,9 +721,7 @@ export const maintenanceLogRepository = {
 		db: Kysely<Database>,
 		startDate?: string,
 		endDate?: string
-	): Promise<
-		(Partial<MaintenanceLog> & { equipment_name: string; task_title: string })[]
-	> => {
+	): Promise<(Partial<MaintenanceLog> & { equipment_name: string; task_title: string })[]> => {
 		let query = db
 			.selectFrom('maintenance_logs')
 			.innerJoin('equipment', 'maintenance_logs.equipment_id', 'equipment.id')
@@ -755,7 +764,10 @@ export const maintenanceLogRepository = {
 
 // Maintenance Log Attachments Repository
 export const maintenanceLogAttachmentRepository = {
-	getByLogId: (db: Kysely<Database>, maintenanceLogId: number): Promise<MaintenanceLogAttachment[]> => {
+	getByLogId: (
+		db: Kysely<Database>,
+		maintenanceLogId: number
+	): Promise<MaintenanceLogAttachment[]> => {
 		return db
 			.selectFrom('maintenance_log_attachments')
 			.selectAll()
@@ -764,10 +776,7 @@ export const maintenanceLogAttachmentRepository = {
 			.execute();
 	},
 
-	getById: (
-		db: Kysely<Database>,
-		id: number
-	): Promise<MaintenanceLogAttachment | undefined> => {
+	getById: (db: Kysely<Database>, id: number): Promise<MaintenanceLogAttachment | undefined> => {
 		return db
 			.selectFrom('maintenance_log_attachments')
 			.selectAll()
