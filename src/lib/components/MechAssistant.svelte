@@ -635,7 +635,7 @@
 			<!-- Footer: voice/text input (hidden when action pending) -->
 			{#if !pendingAction}
 				<footer
-					class="flex-shrink-0 border-t border-gray-100 px-5 py-4 dark:border-gray-800"
+					class="flex-shrink-0 border-t border-gray-100 px-5 pt-4 pb-6 dark:border-gray-800"
 				>
 					<!-- Voice error banner -->
 					{#if voiceError}
@@ -647,7 +647,7 @@
 					{/if}
 
 					<!-- Voice input area -->
-					<div class="mb-3">
+					<div class="mb-5">
 						{#if voiceState === 'idle' && voiceSupported}
 							<div class="flex justify-center">
 								<button
