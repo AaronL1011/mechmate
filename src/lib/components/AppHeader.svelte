@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
 	import type { AppShell } from '$lib/types/appShell';
-	import type { Equipment, Task } from '$lib/types/db.js';
-	import AddEquipmentModal from '$lib/components/AddEquipmentModal.svelte';
-	import AddTaskModal from '$lib/components/AddTaskModal.svelte';
-	import MechAssistant from '$lib/components/MechAssistant.svelte';
 	import {
-		mechAssistantLaunch,
 		requestOpenAddEquipmentModal,
 		requestOpenAddTaskModal
 	} from '$lib/stores/mechAssistantLaunch';
@@ -15,58 +9,22 @@
 	let { shell }: { shell: AppShell } = $props();
 
 	let showDropdown = $state(false);
-	let showMechAssistant = $state(false);
-	let mechAssistantInitialPrompt = $state<string | undefined>(undefined);
-	let showAddEquipmentModal = $state(false);
-	let showAddTaskModal = $state(false);
 
 	const stats = $derived(shell.stats);
 
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
-		if (!target.closest('.split-button-container')) {
+		if (!target.closest('.quick-actions-menu')) {
 			showDropdown = false;
 		}
 	}
 
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside);
-
-		const unsubMech = mechAssistantLaunch.subscribe((payload) => {
-			if (payload) {
-				mechAssistantInitialPrompt = payload.prompt;
-				showMechAssistant = true;
-				mechAssistantLaunch.set(null);
-			}
-		});
-		const unsubEq = requestOpenAddEquipmentModal.subscribe((open) => {
-			if (open) {
-				showAddEquipmentModal = true;
-				requestOpenAddEquipmentModal.set(false);
-			}
-		});
-		const unsubTask = requestOpenAddTaskModal.subscribe((open) => {
-			if (open) {
-				showAddTaskModal = true;
-				requestOpenAddTaskModal.set(false);
-			}
-		});
-
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
-			unsubMech();
-			unsubEq();
-			unsubTask();
 		};
 	});
-
-	function handleEquipmentCreated(_equipment: Equipment) {
-		invalidateAll();
-	}
-
-	function handleTaskCreated(_task: Task) {
-		invalidateAll();
-	}
 </script>
 
 <header
@@ -76,7 +34,7 @@
 		<div class="flex items-center justify-between space-x-4 py-4">
 			<a
 				href="/"
-				class="flex items-center gap-4 rounded-md outline-none ring-blue-500 focus-visible:ring-2"
+				class="flex items-center gap-4 rounded-md ring-blue-500 outline-none focus-visible:ring-2"
 				aria-label="Mechmate home"
 			>
 				<img src="/robot.png" alt="" class="h-10 w-10" />
@@ -101,30 +59,27 @@
 					</svg>
 				</a>
 
-				<div class="split-button-container relative inline-flex rounded-lg shadow-sm">
+				<div class="quick-actions-menu relative inline-flex rounded-lg shadow-sm">
 					<button
-						class="rounded-l-lg border-r border-blue-500 bg-blue-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none lg:text-base dark:border-blue-600 dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800"
-						disabled={!stats}
-						onclick={() => {
-							showMechAssistant = true;
-						}}
-					>
-						Ask Mech
-					</button>
-					<button
-						class="rounded-r-lg border-l border-blue-500 bg-blue-600 px-2 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none lg:text-base dark:border-blue-600 dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800"
+						type="button"
+						class="rounded-lg border border-gray-200 bg-white p-2.5 text-gray-700 transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-offset-gray-800"
 						disabled={!stats}
 						onclick={() => (showDropdown = !showDropdown)}
-						aria-label="Open menu"
+						aria-label="Quick actions"
 						aria-expanded={showDropdown}
 						aria-haspopup="true"
 					>
-						<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="22"
+							height="22"
+							fill="currentColor"
+							viewBox="0 0 256 256"
+							aria-hidden="true"
+						>
 							<path
-								fill-rule="evenodd"
-								d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-								clip-rule="evenodd"
-							/>
+								d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128Zm56,0a12,12,0,1,1-12-12A12,12,0,0,1,196,128ZM84,128a12,12,0,1,1-12-12A12,12,0,0,1,84,128Z"
+							></path>
 						</svg>
 					</button>
 
@@ -134,10 +89,11 @@
 						>
 							<div class="">
 								<button
+									type="button"
 									class="flex w-full items-center gap-2 px-6 py-4 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-25 dark:text-gray-300 dark:hover:bg-gray-700"
 									disabled={stats?.total_equipment === 0}
 									onclick={() => {
-										showAddTaskModal = true;
+										requestOpenAddTaskModal.set(true);
 										showDropdown = false;
 									}}
 								>
@@ -146,10 +102,11 @@
 							</div>
 							<div class="">
 								<button
+									type="button"
 									class="flex w-full items-center gap-2 px-6 py-4 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-25 dark:text-gray-300 dark:hover:bg-gray-700"
 									disabled={stats?.total_equipment === 0}
 									onclick={() => {
-										showAddEquipmentModal = true;
+										requestOpenAddEquipmentModal.set(true);
 										showDropdown = false;
 									}}
 								>
@@ -173,29 +130,3 @@
 		</div>
 	</div>
 </header>
-
-<AddEquipmentModal
-	isOpen={showAddEquipmentModal}
-	equipmentTypes={shell.equipmentTypes}
-	equipmentCreated={handleEquipmentCreated}
-	onCloseModal={() => (showAddEquipmentModal = false)}
-/>
-
-<AddTaskModal
-	isOpen={showAddTaskModal}
-	equipment={shell.equipment}
-	taskTypes={shell.taskTypes}
-	equipmentTypes={shell.equipmentTypes}
-	taskCreated={handleTaskCreated}
-	onCloseModal={() => (showAddTaskModal = false)}
-/>
-
-<MechAssistant
-	isOpen={showMechAssistant}
-	initialPrompt={mechAssistantInitialPrompt}
-	onSuccess={() => invalidateAll()}
-	onClose={() => {
-		mechAssistantInitialPrompt = undefined;
-		showMechAssistant = false;
-	}}
-/>

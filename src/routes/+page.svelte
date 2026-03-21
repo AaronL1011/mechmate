@@ -45,7 +45,7 @@
 	<title>Mechmate - Maintenance Dashboard</title>
 </svelte:head>
 
-<main class="mx-auto max-w-7xl">
+<main class="mx-auto max-w-7xl pb-16">
 	{#if error}
 		<div
 			class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"

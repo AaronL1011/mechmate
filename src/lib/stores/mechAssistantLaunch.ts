@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-/** Opens MechAssistant from outside AppHeader (e.g. proactive suggestions). */
+/** Opens MechAssistant from outside AppMechChrome (e.g. proactive suggestions). */
 export const mechAssistantLaunch = writable<{ prompt?: string } | null>(null);
 
 /** Opens Add Equipment modal from dashboard list empty state. */

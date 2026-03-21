@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import AppHeader from '$lib/components/AppHeader.svelte';
+	import AppMechChrome from '$lib/components/AppMechChrome.svelte';
 
 	let { data, children } = $props();
 
@@ -15,6 +16,7 @@
 {:else}
 	<div class="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 dark:bg-gray-900">
 		<AppHeader shell={data.shell} />
+		<AppMechChrome shell={data.shell} />
 		{@render children()}
 	</div>
 {/if}
