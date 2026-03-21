@@ -61,7 +61,7 @@
 {#if !showMechAssistant}
 	<button
 		type="button"
-		class="group fixed end-[calc(1.5rem+env(safe-area-inset-right,0px))] bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] z-40 inline-flex min-h-16 min-w-16 items-center justify-center rounded-full p-[3px] text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 lg:end-[calc(1.5rem+env(safe-area-inset-right,0px))] lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] dark:focus-visible:ring-offset-gray-900"
+		class="group fixed end-[calc(1.5rem+env(safe-area-inset-right,0px))] bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] z-40 inline-flex min-h-20 min-w-20 items-center justify-center rounded-full p-[3px] text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 lg:end-[calc(1.5rem+env(safe-area-inset-right,0px))] lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] dark:focus-visible:ring-offset-gray-900"
 		disabled={!stats}
 		aria-label="Open Mech assistant"
 		onclick={() => {
@@ -71,10 +71,10 @@
 		<span class="mech-fab-ring pointer-events-none absolute inset-0 rounded-full" aria-hidden="true"
 		></span>
 		<span
-			class="relative z-[1] inline-flex min-h-[3.625rem] min-w-[3.625rem] items-center justify-center gap-2 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-3 py-3 text-white shadow-md ring-1 ring-white/25 transition-[box-shadow,filter] duration-200 ring-inset group-hover:shadow-lg group-hover:shadow-blue-500/35 group-hover:brightness-[1.05] group-focus-visible:shadow-lg group-focus-visible:shadow-blue-500/40 group-disabled:from-gray-500 group-disabled:to-gray-600 group-disabled:shadow-none sm:px-4 dark:from-blue-500 dark:to-blue-700 dark:ring-white/15 dark:group-hover:shadow-blue-400/30 dark:group-hover:brightness-110"
+			class="relative z-[1] inline-flex min-h-20 min-w-20 items-center justify-center gap-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-3 py-3 text-white shadow-md ring-1 ring-white/25 transition-[box-shadow,filter] duration-200 ring-inset group-hover:shadow-lg group-hover:shadow-blue-500/35 group-hover:brightness-[1.05] group-focus-visible:shadow-lg group-focus-visible:shadow-blue-500/40 group-disabled:from-gray-500 group-disabled:to-gray-600 group-disabled:shadow-none sm:px-4 dark:from-blue-500 dark:to-blue-700 dark:ring-white/15 dark:group-hover:shadow-blue-400/30 dark:group-hover:brightness-110"
 		>
-			<img src="/robot.png" alt="" class="h-7 w-7 shrink-0 drop-shadow-sm sm:h-6 sm:w-6 opacity-75" />
-			<span class="hidden sm:inline">Ask Mech</span>
+			<img src="/robot.png" alt="" class="h-10 w-10 shrink-0 drop-shadow-sm sm:h-10 sm:w-10 opacity-75" />
+			<span class="hidden sm:inline text-lg">Ask Mech</span>
 		</span>
 	</button>
 {/if}
