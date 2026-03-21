@@ -655,11 +655,11 @@
 									disabled={isProcessing}
 									onclick={handlePrimaryVoiceButton}
 									aria-label="Start voice input"
-									class="flex h-32 w-32 min-h-[7rem] min-w-[7rem] items-center justify-center rounded-full border-2 border-dashed border-blue-200 bg-blue-50/60 text-blue-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
+									class="flex h-24 w-24 min-h-[6rem] min-w-[6rem] items-center justify-center rounded-full border-2 border-dashed border-blue-200 bg-blue-50/60 text-blue-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
-										class="h-16 w-16"
+										class="h-10 w-10"
 										fill="currentColor"
 										viewBox="0 0 256 256"
 										aria-hidden="true"
@@ -687,18 +687,18 @@
 										{input || 'Say something…'}
 									</p>
 								</div>
-								<div class="flex items-center justify-center gap-8 sm:gap-10">
+								<div class="flex items-center justify-center gap-6 sm:gap-7">
 									{#if voiceState === 'listening'}
 										<button
 											type="button"
 											onclick={pauseVoice}
 											aria-label="Pause recording"
 											title="Pause"
-											class="flex h-24 w-24 min-h-[6rem] min-w-[6rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+											class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
-												class="h-10 w-10"
+												class="h-8 w-8"
 												fill="currentColor"
 												viewBox="0 0 256 256"
 												aria-hidden="true"
@@ -714,11 +714,11 @@
 											onclick={resumeVoice}
 											aria-label="Resume recording"
 											title="Resume"
-											class="flex h-24 w-24 min-h-[6rem] min-w-[6rem] shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+											class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
-												class="h-10 w-10"
+												class="h-8 w-8"
 												fill="currentColor"
 												viewBox="0 0 256 256"
 												aria-hidden="true"
@@ -730,7 +730,7 @@
 										</button>
 									{/if}
 
-									<div class="relative h-32 w-32 shrink-0">
+									<div class="relative h-24 w-24 shrink-0">
 										{#if voiceState === 'listening'}
 											<span
 												class="mech-voice-ring mech-voice-ring--listening absolute inset-0 rounded-full"
@@ -751,14 +751,14 @@
 												: 'Send voice message to Mech'}
 											aria-pressed={voiceState === 'listening'}
 											title={!input.trim() ? 'Add speech to send' : 'Send to Mech'}
-											class="absolute inset-[6px] flex items-center justify-center rounded-full text-white shadow-md transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-500 {voiceState ===
+											class="absolute inset-[4.5px] flex items-center justify-center rounded-full text-white shadow-md transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-500 {voiceState ===
 											'paused'
 												? 'bg-blue-600/80 dark:bg-blue-700/80'
 												: 'bg-blue-600 dark:bg-blue-600'}"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
-												class="h-16 w-16"
+												class="h-10 w-10"
 												fill="currentColor"
 												viewBox="0 0 256 256"
 												aria-hidden="true"
@@ -775,11 +775,11 @@
 										onclick={cancelVoice}
 										aria-label="Stop and clear voice input"
 										title="Cancel"
-										class="flex h-24 w-24 min-h-[6rem] min-w-[6rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+										class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
-											class="h-10 w-10"
+											class="h-8 w-8"
 											fill="none"
 											stroke="currentColor"
 											stroke-width="2"
