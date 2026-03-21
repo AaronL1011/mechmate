@@ -2,7 +2,7 @@
 	import ActionConfirmation from './ActionConfirmation.svelte';
 	import { marked, Renderer } from 'marked';
 	import DOMPurify from 'dompurify';
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 
 	interface Props {
 		isOpen: boolean;
@@ -13,7 +13,7 @@
 
 	const { isOpen, onClose, onSuccess, initialPrompt }: Props = $props();
 
-	type VoiceState = 'idle' | 'requesting' | 'listening' | 'paused' | 'unsupported' | 'denied';
+	type VoiceState = 'idle' | 'listening' | 'paused' | 'unsupported' | 'denied';
 
 	type ConversationMessage =
 		| { id: string; role: 'user'; content: string }
@@ -52,15 +52,12 @@
 	let voiceError = $state<string | null>(null);
 	let textFallbackOpen = $state(false);
 	let textareaElement: HTMLTextAreaElement | null = $state(null);
-	let waveformCanvas: HTMLCanvasElement | null = $state(null);
 
-	let mediaStream: MediaStream | null = $state(null);
 	let recognitionInstance: SpeechRecognitionInstance | null = $state(null);
-	let audioContext: AudioContext | null = $state(null);
-	let analyserNode: AnalyserNode | null = $state(null);
-	let waveformAnimationId = $state<number | null>(null);
 	let shouldBeListening = false;
 	let recognitionRestartTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Bumped on full session end / new session so delayed restart timers never revive a dead session. */
+	let voiceSessionEpoch = 0;
 
 	const hasSpeechRecognition =
 		typeof window !== 'undefined' &&
@@ -69,18 +66,7 @@
 			typeof (window as unknown as { webkitSpeechRecognition?: unknown })
 				.webkitSpeechRecognition !== 'undefined');
 
-	const hasGetUserMedia =
-		typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
-
-	const isMobile =
-		typeof navigator !== 'undefined' &&
-		/Android|iPhone|iPad|iPod|webOS|Mobile/i.test(navigator.userAgent);
-
-	// On mobile Chrome, getUserMedia and SpeechRecognition compete for the mic; only one works.
-	// Skip waveform (getUserMedia) on mobile so SpeechRecognition gets exclusive access.
-	const useWaveform = hasGetUserMedia && !isMobile;
-
-	const voiceSupported = hasSpeechRecognition && (hasGetUserMedia || isMobile);
+	const voiceSupported = hasSpeechRecognition;
 
 	const markdownRenderer = new Renderer();
 	markdownRenderer.table = function (token) {
@@ -104,106 +90,6 @@
 		messages = [...messages, { ...msg, id: newId() } as ConversationMessage];
 	}
 
-	// ─── Canvas / waveform ───────────────────────────────────────────────────
-
-	function setupCanvas(el: HTMLCanvasElement) {
-		function resize() {
-			const dpr = window.devicePixelRatio || 1;
-			const rect = el.getBoundingClientRect();
-			el.width = rect.width * dpr;
-			el.height = rect.height * dpr;
-		}
-		resize();
-		const ro = new ResizeObserver(resize);
-		ro.observe(el);
-		return {
-			destroy() {
-				ro.disconnect();
-			}
-		};
-	}
-
-	function stopWaveform() {
-		if (waveformAnimationId != null) {
-			cancelAnimationFrame(waveformAnimationId);
-			waveformAnimationId = null;
-		}
-		analyserNode = null;
-		if (audioContext?.state !== 'closed') {
-			audioContext?.close();
-		}
-		audioContext = null;
-	}
-
-	function releaseMicrophone() {
-		mediaStream?.getTracks().forEach((t) => t.stop());
-		mediaStream = null;
-	}
-
-	function drawWaveform() {
-		const canvas = waveformCanvas;
-		const analyser = analyserNode;
-		if (!canvas || !analyser) return;
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
-
-		const c: HTMLCanvasElement = canvas;
-		const a: AnalyserNode = analyser;
-		const g: CanvasRenderingContext2D = ctx;
-
-		const BAR_COUNT = 28;
-		const dataArray = new Uint8Array(a.frequencyBinCount);
-
-		function frame() {
-			waveformAnimationId = requestAnimationFrame(frame);
-			a.getByteFrequencyData(dataArray);
-
-			const dpr = window.devicePixelRatio || 1;
-			const w = c.width / dpr;
-			const h = c.height / dpr;
-
-			g.clearRect(0, 0, c.width, c.height);
-			g.save();
-			g.scale(dpr, dpr);
-
-			const isDark = document.documentElement.classList.contains('dark');
-			const barColor = isDark ? 'rgb(96 165 250)' : 'rgb(59 130 246)';
-			const silentColor = isDark ? 'rgba(148 163 184 / 0.3)' : 'rgba(148 163 184 / 0.35)';
-
-			const totalGap = w * 0.08;
-			const barW = (w - totalGap) / BAR_COUNT - totalGap / BAR_COUNT;
-			const spacing = (w - barW * BAR_COUNT) / (BAR_COUNT + 1);
-			const cy = h / 2;
-			const maxHalf = h * 0.42;
-
-			for (let i = 0; i < BAR_COUNT; i++) {
-				const t = i / (BAR_COUNT - 1);
-				const taper = 0.15 + 0.85 * Math.pow(Math.sin(t * Math.PI), 0.7);
-				const bucketIndex = Math.floor((i / BAR_COUNT) * (a.frequencyBinCount * 0.6));
-				const value = dataArray[bucketIndex] ?? 0;
-				const normalised = value / 255;
-				const halfH = Math.max(1.5, normalised * maxHalf * taper);
-				const x = spacing + i * (barW + spacing);
-				const radius = Math.min(barW / 2, halfH, 3);
-
-				if (normalised < 0.02) {
-					g.fillStyle = silentColor;
-					g.beginPath();
-					g.roundRect(x, cy - 1.5, barW, 3, 1.5);
-					g.fill();
-				} else {
-					g.fillStyle = barColor;
-					g.beginPath();
-					g.roundRect(x, cy - halfH, barW, halfH * 2, radius);
-					g.fill();
-				}
-			}
-
-			g.restore();
-		}
-		frame();
-	}
-
 	// ─── Voice input ─────────────────────────────────────────────────────────
 
 	function setVoiceError(message: string) {
@@ -218,17 +104,30 @@
 		}
 	}
 
+	function detachRecognitionHandlers(rec: SpeechRecognitionInstance) {
+		rec.onresult = () => {};
+		rec.onerror = () => {};
+		rec.onend = () => {};
+	}
+
+	/**
+	 * Stops the active SpeechRecognition instance, clears restart timers, and detaches handlers
+	 * so late browser callbacks cannot mutate state after teardown.
+	 */
 	function stopRecognition() {
 		clearRestartTimer();
-		if (recognitionInstance) {
+		const rec = recognitionInstance;
+		if (!rec) return;
+		recognitionInstance = null;
+		detachRecognitionHandlers(rec);
+		try {
+			rec.abort();
+		} catch {
 			try {
-				recognitionInstance.abort();
+				rec.stop();
 			} catch {
-				try {
-					recognitionInstance.stop();
-				} catch {}
+				/* already ended or invalid state */
 			}
-			recognitionInstance = null;
 		}
 	}
 
@@ -238,6 +137,9 @@
 	// true continuous listening).
 	function createAndStartRecognition(): void {
 		clearRestartTimer();
+		if (recognitionInstance) {
+			stopRecognition();
+		}
 
 		const Win = window as unknown as {
 			SpeechRecognition?: new () => SpeechRecognitionInstance;
@@ -246,6 +148,7 @@
 		const Recognition = Win.SpeechRecognition || Win.webkitSpeechRecognition;
 		if (!Recognition) return;
 
+		const sessionAtCreate = voiceSessionEpoch;
 		const recognition = new Recognition() as SpeechRecognitionInstance;
 		recognitionInstance = recognition;
 		recognition.continuous = true;
@@ -265,35 +168,60 @@
 		recognition.onerror = (event: { error: string }) => {
 			if (event.error === 'aborted' || event.error === 'no-speech') return;
 			if (event.error === 'not-allowed') {
+				voiceSessionEpoch++;
 				shouldBeListening = false;
+				stopRecognition();
 				setVoiceError(
 					'Microphone access was denied. Allow microphone for this site in your browser settings and try again.'
 				);
-				releaseMicrophone();
-				stopWaveform();
-				recognitionInstance = null;
 				return;
 			}
 			voiceError = `Speech error: ${event.error}. Tap Resume to try again.`;
 		};
 
 		recognition.onend = () => {
-			recognitionInstance = null;
-			if (shouldBeListening) {
-				recognitionRestartTimer = setTimeout(() => {
-					if (shouldBeListening) createAndStartRecognition();
-				}, 150);
-			} else {
-				voiceState = 'paused';
+			if (recognitionInstance === recognition) {
+				recognitionInstance = null;
 			}
+			detachRecognitionHandlers(recognition);
+			if (voiceSessionEpoch !== sessionAtCreate) {
+				return;
+			}
+			if (!shouldBeListening) {
+				if (voiceState === 'listening') {
+					voiceState = 'paused';
+				}
+				return;
+			}
+			if (recognitionInstance !== null) {
+				return;
+			}
+			recognitionRestartTimer = setTimeout(() => {
+				if (!shouldBeListening || voiceSessionEpoch !== sessionAtCreate) return;
+				createAndStartRecognition();
+			}, 150);
 		};
 
 		try {
 			recognition.start();
 		} catch {
 			// start() can throw InvalidStateError if called too soon after a stop.
+			if (recognitionInstance === recognition) {
+				recognitionInstance = null;
+			}
+			detachRecognitionHandlers(recognition);
+			try {
+				recognition.abort();
+			} catch {
+				try {
+					recognition.stop();
+				} catch {
+					/* ignore */
+				}
+			}
 			recognitionRestartTimer = setTimeout(() => {
-				if (shouldBeListening) createAndStartRecognition();
+				if (!shouldBeListening || voiceSessionEpoch !== sessionAtCreate) return;
+				createAndStartRecognition();
 			}, 500);
 		}
 	}
@@ -313,56 +241,11 @@
 			return;
 		}
 
+		voiceSessionEpoch++;
 		shouldBeListening = true;
-		voiceState = 'requesting';
-
-		if (isMobile) {
-			usedVoiceThisTurn = true;
-			voiceState = 'listening';
-			createAndStartRecognition();
-			return;
-		}
-
-		navigator.mediaDevices
-			.getUserMedia({ audio: true })
-			.then((stream) => {
-				if (!shouldBeListening) {
-					stream.getTracks().forEach((t) => t.stop());
-					return;
-				}
-				mediaStream = stream;
-
-				const actx = new AudioContext();
-				audioContext = actx;
-				const source = actx.createMediaStreamSource(stream);
-				const analyser = actx.createAnalyser();
-				analyser.fftSize = 256;
-				source.connect(analyser);
-				analyserNode = analyser;
-
-				usedVoiceThisTurn = true;
-				voiceState = 'listening';
-				createAndStartRecognition();
-			})
-			.catch((err: unknown) => {
-				shouldBeListening = false;
-				voiceState = 'idle';
-				const name = err instanceof Error ? err.name : '';
-				const message = err instanceof Error ? err.message : String(err);
-				if (
-					name === 'NotAllowedError' ||
-					name === 'PermissionDeniedError' ||
-					message.toLowerCase().includes('permission')
-				) {
-					voiceError =
-						'Microphone access was denied. Allow microphone for this site and try again.';
-					voiceState = 'denied';
-				} else {
-					voiceError =
-						'Could not access microphone. Check that a microphone is connected and try again.';
-					voiceState = 'denied';
-				}
-			});
+		usedVoiceThisTurn = true;
+		voiceState = 'listening';
+		createAndStartRecognition();
 	}
 
 	function pauseVoice() {
@@ -372,7 +255,6 @@
 	}
 
 	function resumeVoice() {
-		if (!isMobile && !mediaStream) return;
 		voiceError = null;
 		shouldBeListening = true;
 		voiceState = 'listening';
@@ -380,21 +262,30 @@
 	}
 
 	function cancelVoice() {
+		voiceSessionEpoch++;
 		shouldBeListening = false;
 		stopRecognition();
-		stopWaveform();
-		releaseMicrophone();
 		voiceState = 'idle';
 		input = '';
 	}
 
 	function sendAndCloseVoice() {
+		voiceSessionEpoch++;
 		shouldBeListening = false;
 		stopRecognition();
-		stopWaveform();
-		releaseMicrophone();
 		voiceState = 'idle';
 		if (input.trim()) processInput();
+	}
+
+	function handlePrimaryVoiceButton() {
+		if (voiceState === 'idle') {
+			startVoiceInput();
+			return;
+		}
+		if (voiceState === 'listening' || voiceState === 'paused') {
+			if (!input.trim() || isProcessing) return;
+			sendAndCloseVoice();
+		}
 	}
 
 	// ─── Effects ─────────────────────────────────────────────────────────────
@@ -421,21 +312,6 @@
 	});
 
 	$effect(() => {
-		const _state = voiceState;
-		const canvas = waveformCanvas;
-		const analyser = analyserNode;
-		if ((_state === 'listening' || _state === 'paused') && canvas && analyser) {
-			drawWaveform();
-			return () => {
-				if (waveformAnimationId != null) {
-					cancelAnimationFrame(waveformAnimationId);
-					waveformAnimationId = null;
-				}
-			};
-		}
-	});
-
-	$effect(() => {
 		// Scroll to bottom whenever messages, pendingAction, or isProcessing change.
 		const _m = messages;
 		const _p = pendingAction;
@@ -445,10 +321,8 @@
 		});
 	});
 
-	$effect(() => {
-		return () => {
-			if (!isOpen) cancelVoice();
-		};
+	onDestroy(() => {
+		cancelVoice();
 	});
 
 	// ─── Actions ─────────────────────────────────────────────────────────────
@@ -775,62 +649,33 @@
 					<!-- Voice input area -->
 					<div class="mb-3">
 						{#if voiceState === 'idle' && voiceSupported}
-							<button
-								type="button"
-								disabled={isProcessing}
-								onclick={startVoiceInput}
-								class="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/60 py-4 text-sm font-medium text-blue-700 transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-4 w-4"
-									fill="currentColor"
-									viewBox="0 0 256 256"
+							<div class="flex justify-center">
+								<button
+									type="button"
+									disabled={isProcessing}
+									onclick={handlePrimaryVoiceButton}
+									aria-label="Start voice input"
+									class="flex h-16 w-16 min-h-[3.5rem] min-w-[3.5rem] items-center justify-center rounded-full border-2 border-dashed border-blue-200 bg-blue-50/60 text-blue-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
 								>
-									<path
-										d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"
-									></path>
-								</svg>
-								Tap to speak
-							</button>
-						{:else if voiceState === 'requesting'}
-							<div
-								class="flex w-full items-center justify-center gap-3 rounded-xl border border-blue-200 bg-blue-50/60 py-4 dark:border-blue-800 dark:bg-blue-900/10"
-							>
-								<div
-									class="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
-								></div>
-								<span class="text-sm text-blue-700 dark:text-blue-300"
-									>Getting microphone access…</span
-								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-8 w-8"
+										fill="currentColor"
+										viewBox="0 0 256 256"
+										aria-hidden="true"
+									>
+										<path
+											d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"
+										></path>
+									</svg>
+								</button>
 							</div>
 						{:else if voiceState === 'listening' || voiceState === 'paused'}
-							<div
-								class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-							>
-								<div class="px-4 pt-3">
-									{#if useWaveform}
-										<canvas
-											bind:this={waveformCanvas}
-											class="h-12 w-full"
-											aria-hidden="true"
-											use:setupCanvas
-										></canvas>
-									{:else}
-										<div
-											class="flex h-12 items-center justify-center gap-1.5"
-											aria-hidden="true"
-										>
-											{#each [0, 1, 2, 3, 4] as i}
-												<span
-													class="h-6 w-1 rounded-full bg-blue-400 animate-pulse dark:bg-blue-500"
-													style="animation-delay: {i * 80}ms"
-												></span>
-											{/each}
-										</div>
-									{/if}
-								</div>
-								<div class="px-4 pb-1 pt-1.5">
+							<div class="mx-auto max-w-md">
+								<div
+									class="mb-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+									aria-live="polite"
+								>
 									<p class="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500">
 										{voiceState === 'listening' ? 'Listening…' : 'Paused'}
 									</p>
@@ -842,40 +687,107 @@
 										{input || 'Say something…'}
 									</p>
 								</div>
-								<div
-									class="flex items-center justify-end gap-2 border-t border-gray-100 p-2.5 dark:border-gray-700"
-								>
+								<div class="flex items-center justify-center gap-4 sm:gap-5">
 									{#if voiceState === 'listening'}
 										<button
 											type="button"
 											onclick={pauseVoice}
-											class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+											aria-label="Pause recording"
+											title="Pause"
+											class="flex h-12 w-12 min-h-[3rem] min-w-[3rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 										>
-											Pause
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-5 w-5"
+												fill="currentColor"
+												viewBox="0 0 256 256"
+												aria-hidden="true"
+											>
+												<path
+													d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"
+												></path>
+											</svg>
 										</button>
 									{:else}
 										<button
 											type="button"
 											onclick={resumeVoice}
-											class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+											aria-label="Resume recording"
+											title="Resume"
+											class="flex h-12 w-12 min-h-[3rem] min-w-[3rem] shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
 										>
-											Resume
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-5 w-5"
+												fill="currentColor"
+												viewBox="0 0 256 256"
+												aria-hidden="true"
+											>
+												<path
+													d="M232.4,114.49,88.32,26.35a16,16,0,0,0-16.2-.3A15.78,15.78,0,0,0,64,39.87V216.13A15.78,15.78,0,0,0,72.12,229.98a16,16,0,0,0,16.2-.27l144.08-88.14a15.76,15.76,0,0,0,0-27Z"
+												></path>
+											</svg>
 										</button>
 									{/if}
+
+									<div class="relative h-16 w-16 shrink-0">
+										{#if voiceState === 'listening'}
+											<span
+												class="mech-voice-ring mech-voice-ring--listening absolute inset-0 rounded-full"
+												aria-hidden="true"
+											></span>
+										{:else}
+											<span
+												class="mech-voice-ring mech-voice-ring--paused absolute inset-0 rounded-full"
+												aria-hidden="true"
+											></span>
+										{/if}
+										<button
+											type="button"
+											disabled={!input.trim() || isProcessing}
+											onclick={handlePrimaryVoiceButton}
+											aria-label={!input.trim()
+												? 'Speak to add text, then tap to send to Mech'
+												: 'Send voice message to Mech'}
+											aria-pressed={voiceState === 'listening'}
+											title={!input.trim() ? 'Add speech to send' : 'Send to Mech'}
+											class="absolute inset-[3px] flex items-center justify-center rounded-full text-white shadow-md transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-500 {voiceState ===
+											'paused'
+												? 'bg-blue-600/80 dark:bg-blue-700/80'
+												: 'bg-blue-600 dark:bg-blue-600'}"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-8 w-8"
+												fill="currentColor"
+												viewBox="0 0 256 256"
+												aria-hidden="true"
+											>
+												<path
+													d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"
+												></path>
+											</svg>
+										</button>
+									</div>
+
 									<button
 										type="button"
 										onclick={cancelVoice}
-										class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+										aria-label="Stop and clear voice input"
+										title="Cancel"
+										class="flex h-12 w-12 min-h-[3rem] min-w-[3rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 									>
-										Cancel
-									</button>
-									<button
-										type="button"
-										disabled={!input.trim() || isProcessing}
-										onclick={sendAndCloseVoice}
-										class="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 dark:bg-blue-700 dark:hover:bg-blue-600"
-									>
-										Send
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-5 w-5"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+										</svg>
 									</button>
 								</div>
 							</div>
@@ -884,13 +796,19 @@
 						{/if}
 					</div>
 
-					<!-- Text fallback toggle -->
+					<!-- Text fallback toggle (kept in DOM while recording so footer layout does not shift) -->
 					<div>
-						{#if voiceState !== 'unsupported' && voiceState !== 'denied' && voiceSupported && voiceState !== 'listening' && voiceState !== 'paused'}
+						{#if voiceState !== 'unsupported' && voiceState !== 'denied' && voiceSupported}
+							{@const hideTypeToggle =
+								voiceState === 'listening' || voiceState === 'paused'}
 							<button
 								type="button"
 								onclick={() => (textFallbackOpen = !textFallbackOpen)}
-								class="mb-2 flex w-full items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+								aria-hidden={hideTypeToggle ? true : undefined}
+								tabindex={hideTypeToggle ? -1 : undefined}
+								class="mb-2 flex w-full items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 {hideTypeToggle
+									? 'invisible pointer-events-none select-none'
+									: ''}"
 							>
 								{textFallbackOpen ? 'Hide text input' : 'Type instead'}
 								<svg
@@ -936,3 +854,65 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.mech-voice-ring--listening {
+		background: conic-gradient(
+			from 0deg,
+			rgb(59, 130, 246),
+			rgb(34, 211, 238),
+			rgb(147, 197, 253),
+			rgb(59, 130, 246)
+		);
+		animation: mech-voice-ring-spin 2.2s linear infinite;
+	}
+
+	.mech-voice-ring--paused {
+		background: conic-gradient(
+			from 90deg,
+			rgb(59, 130, 246),
+			rgb(100, 116, 139),
+			rgb(96, 165, 250),
+			rgb(59, 130, 246)
+		);
+		animation: mech-voice-ring-paused-pulse 2.5s ease-in-out infinite;
+		opacity: 0.92;
+	}
+
+	@keyframes mech-voice-ring-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	@keyframes mech-voice-ring-paused-pulse {
+		0%,
+		100% {
+			opacity: 0.75;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+
+	@keyframes mech-voice-ring-soft-pulse {
+		0%,
+		100% {
+			opacity: 0.65;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.mech-voice-ring--listening {
+			animation: mech-voice-ring-soft-pulse 1.8s ease-in-out infinite;
+		}
+
+		.mech-voice-ring--paused {
+			animation: none;
+			opacity: 0.88;
+		}
+	}
+</style>

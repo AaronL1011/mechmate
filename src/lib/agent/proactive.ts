@@ -8,7 +8,7 @@ import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
 
-const PROACTIVE_MAX_SECTIONS = 4;
+const PROACTIVE_MAX_SECTIONS = 3;
 const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks — ';
 
 async function getEquipmentWithNoTasks(
