@@ -6,7 +6,12 @@ import { runAgentTurn } from '$lib/agent/runtime.js';
 import { getInteractiveSystemPrompt, getAssistantToneContext } from '$lib/agent/prompts.js';
 import * as pendingActions from '$lib/agent/pending-actions.js';
 import * as sessionStore from '$lib/agent/session.js';
-import { globalSettingsRepository } from '$lib/repositories.js';
+import {
+	equipmentRepository,
+	equipmentResourceRepository,
+	globalSettingsRepository
+} from '$lib/repositories.js';
+import { toEquipmentResourceClient } from '$lib/equipment-resource-serialize.js';
 import type { GlobalSettingsValues } from '$lib/types/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,6 +20,7 @@ interface AgentChatRequest {
 	context?: string;
 	conversation_history?: LLMMessage[];
 	session_id?: string;
+	focused_equipment_id?: number;
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -31,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = (await request.json()) as AgentChatRequest;
-		const { prompt, context, session_id: requestSessionId } = body;
+		const { prompt, context, session_id: requestSessionId, focused_equipment_id } = body;
 
 		if (!prompt?.trim()) {
 			return json(
@@ -70,6 +76,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (context) contextData.user_context = context;
+
+		if (
+			focused_equipment_id !== undefined &&
+			focused_equipment_id !== null &&
+			Number.isFinite(focused_equipment_id)
+		) {
+			const eqId = Math.floor(Number(focused_equipment_id));
+			try {
+				const eq = await equipmentRepository.getById(locals.db, eqId);
+				if (eq) {
+					const resourceRows = await equipmentResourceRepository.getByEquipmentId(locals.db, eqId);
+					contextData.focused_equipment = {
+						id: eq.id,
+						name: eq.name,
+						make: eq.make,
+						model: eq.model,
+						usage_unit: eq.usage_unit
+					};
+					contextData.focused_equipment_resources = resourceRows.map(toEquipmentResourceClient);
+				}
+			} catch (err) {
+				console.warn('Failed to load focused equipment resources:', err);
+			}
+		}
 
 		const systemPrompt = getInteractiveSystemPrompt(contextData.assistant_tone as string);
 		const messages: LLMMessage[] = [

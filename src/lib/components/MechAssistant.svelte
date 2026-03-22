@@ -2,7 +2,9 @@
 	import ActionConfirmation from './ActionConfirmation.svelte';
 	import { marked, Renderer } from 'marked';
 	import DOMPurify from 'dompurify';
+	import { get } from 'svelte/store';
 	import { onDestroy, tick } from 'svelte';
+	import { mechAssistantEquipmentFocus } from '$lib/stores/mechAssistantLaunch';
 
 	interface Props {
 		isOpen: boolean;
@@ -342,14 +344,18 @@
 		}
 		isProcessing = true;
 		try {
+			const focusId = get(mechAssistantEquipmentFocus);
+			const payload: Record<string, unknown> = {
+				prompt: promptText,
+				context: options.context ?? 'text'
+			};
+			if (sessionId) payload.session_id = sessionId;
+			if (typeof focusId === 'number' && focusId > 0) payload.focused_equipment_id = focusId;
+
 			const response = await fetch('/api/agent/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					prompt: promptText,
-					context: options.context ?? 'text',
-					...(sessionId ? { session_id: sessionId } : {})
-				})
+				body: JSON.stringify(payload)
 			});
 
 			const data = await response.json();
@@ -519,10 +525,7 @@
 			</header>
 
 			<!-- Thread -->
-			<div
-				bind:this={threadEl}
-				class="scrollbar-hidden flex-1 overflow-y-auto px-5 py-5"
-			>
+			<div bind:this={threadEl} class="scrollbar-hidden flex-1 overflow-y-auto px-5 py-5">
 				{#if messages.length === 0 && !pendingAction && !isProcessing}
 					<!-- Empty state -->
 					<div class="flex h-full flex-col items-center justify-center gap-3 py-10 text-center">
@@ -551,7 +554,7 @@
 								<div class="flex min-w-0 items-start gap-2.5">
 									<img src="/robot.png" alt="Mech" class="mt-0.5 h-8 w-8 flex-shrink-0" />
 									<div
-										class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+										class="max-w-[88%] min-w-0 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 									>
 										<div
 											class="prose prose-sm prose-gray dark:prose-invert prose-p:my-1.5 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:rounded prose-code:bg-gray-100 prose-code:px-1 prose-code:text-blue-600 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:text-gray-900 dark:prose-code:bg-gray-700 dark:prose-code:text-blue-400 dark:prose-headings:text-gray-100 max-w-none min-w-0 text-sm leading-relaxed text-gray-700 dark:text-gray-200"
@@ -594,7 +597,11 @@
 							{:else if msg.role === 'error'}
 								<!-- Error bubble: left-aligned, amber tint -->
 								<div class="flex items-start gap-2.5">
-									<img src="/robot.png" alt="Mech" class="mt-0.5 h-8 w-8 flex-shrink-0 opacity-60" />
+									<img
+										src="/robot.png"
+										alt="Mech"
+										class="mt-0.5 h-8 w-8 flex-shrink-0 opacity-60"
+									/>
 									<div
 										class="max-w-[88%] rounded-2xl rounded-tl-sm border border-amber-100 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-900/40 dark:bg-amber-900/20"
 									>
@@ -633,10 +640,10 @@
 
 						<!-- Action confirmation rendered inline in thread -->
 						{#if pendingAction && actionId}
-							<div class="flex min-w-0 max-w-full items-start gap-2.5">
+							<div class="flex max-w-full min-w-0 items-start gap-2.5">
 								<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0" />
 								<div
-									class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+									class="max-w-[88%] min-w-0 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 								>
 									{#key actionId}
 										<ActionConfirmation
@@ -655,9 +662,7 @@
 
 			<!-- Footer: voice/text input (hidden when action pending) -->
 			{#if !pendingAction}
-				<footer
-					class="flex-shrink-0 border-t border-gray-100 px-5 pt-4 pb-6 dark:border-gray-800"
-				>
+				<footer class="flex-shrink-0 border-t border-gray-100 px-5 pt-4 pb-6 dark:border-gray-800">
 					<!-- Voice error banner -->
 					{#if voiceError}
 						<div
@@ -676,7 +681,7 @@
 									disabled={isProcessing}
 									onclick={handlePrimaryVoiceButton}
 									aria-label="Start voice input"
-									class="flex h-24 w-24 min-h-[6rem] min-w-[6rem] items-center justify-center rounded-full border-2 border-dashed border-blue-200 bg-blue-50/60 text-blue-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
+									class="flex h-24 min-h-[6rem] w-24 min-w-[6rem] items-center justify-center rounded-full border-2 border-dashed border-blue-200 bg-blue-50/60 text-blue-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-100/60 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -703,7 +708,7 @@
 									<p
 										class="mt-0.5 text-sm leading-relaxed {input
 											? 'text-gray-800 dark:text-gray-200'
-											: 'italic text-gray-400 dark:text-gray-500'}"
+											: 'text-gray-400 italic dark:text-gray-500'}"
 									>
 										{input || 'Say something…'}
 									</p>
@@ -715,7 +720,7 @@
 											onclick={pauseVoice}
 											aria-label="Pause recording"
 											title="Pause"
-											class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+											class="flex h-[4.5rem] min-h-[4.5rem] w-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -735,7 +740,7 @@
 											onclick={resumeVoice}
 											aria-label="Resume recording"
 											title="Resume"
-											class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+											class="flex h-[4.5rem] min-h-[4.5rem] w-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -796,7 +801,7 @@
 										onclick={cancelVoice}
 										aria-label="Stop and clear voice input"
 										title="Cancel"
-										class="flex h-[4.5rem] w-[4.5rem] min-h-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+										class="flex h-[4.5rem] min-h-[4.5rem] w-[4.5rem] min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -807,7 +812,11 @@
 											viewBox="0 0 24 24"
 											aria-hidden="true"
 										>
-											<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M6 18L18 6M6 6l12 12"
+											/>
 										</svg>
 									</button>
 								</div>
@@ -820,15 +829,14 @@
 					<!-- Text fallback toggle (kept in DOM while recording so footer layout does not shift) -->
 					<div>
 						{#if voiceState !== 'unsupported' && voiceState !== 'denied' && voiceSupported}
-							{@const hideTypeToggle =
-								voiceState === 'listening' || voiceState === 'paused'}
+							{@const hideTypeToggle = voiceState === 'listening' || voiceState === 'paused'}
 							<button
 								type="button"
 								onclick={() => (textFallbackOpen = !textFallbackOpen)}
 								aria-hidden={hideTypeToggle ? true : undefined}
 								tabindex={hideTypeToggle ? -1 : undefined}
 								class="mb-2 flex w-full items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 {hideTypeToggle
-									? 'invisible pointer-events-none select-none'
+									? 'pointer-events-none invisible select-none'
 									: ''}"
 							>
 								{textFallbackOpen ? 'Hide text input' : 'Type instead'}
@@ -856,14 +864,14 @@
 									bind:value={input}
 									rows={2}
 									placeholder="e.g. 'Log an oil change on the Honda Civic at 87,500 km'"
-									class="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 pr-14 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+									class="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 pr-14 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
 									onkeydown={handleKeyDown}
 									disabled={isProcessing}
 								></textarea>
 								<button
 									disabled={!input.trim() || isProcessing}
 									onclick={processInput}
-									class="absolute bottom-3 right-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 dark:bg-blue-700 dark:hover:bg-blue-600"
+									class="absolute right-3 bottom-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 dark:bg-blue-700 dark:hover:bg-blue-600"
 								>
 									{isProcessing ? getLoadingText() : 'Send'}
 								</button>

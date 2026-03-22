@@ -44,57 +44,49 @@
 			<div class="flex flex-col gap-3">
 				<div class="flex min-w-0 items-start justify-between gap-3">
 					<div class="min-w-0 flex-1">
-					<div class="mb-1.5 flex flex-wrap items-center gap-2">
-						<span
-							class="inline-flex shrink-0 rounded-md bg-gray-200/80 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-gray-600 dark:bg-gray-600/60 dark:text-gray-300"
-						>
-							{getEquipmentTypeName(equipment.equipment_type_id)}
-						</span>
-					</div>
-					<h3
-						class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg"
-					>
-						{equipment.name}
-					</h3>
-					{#if equipment.make || equipment.model || equipment.year}
-						<p
-							class="mt-0.5 text-sm text-gray-500 dark:text-gray-400"
-						>
-							{[
-								equipment.make,
-								equipment.model,
-								equipment.year ? String(equipment.year) : null
-							]
-								.filter(Boolean)
-								.join(' · ')}
-						</p>
-					{/if}
+						<div class="mb-1.5 flex flex-wrap items-center gap-2">
+							<span
+								class="inline-flex shrink-0 rounded-md bg-gray-200/80 px-2 py-0.5 text-xs font-medium tracking-wide text-gray-600 uppercase dark:bg-gray-600/60 dark:text-gray-300"
+							>
+								{getEquipmentTypeName(equipment.equipment_type_id)}
+							</span>
+						</div>
+						<h3 class="text-base font-semibold text-gray-900 sm:text-lg dark:text-white">
+							{equipment.name}
+						</h3>
+						{#if equipment.make || equipment.model || equipment.year}
+							<p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+								{[equipment.make, equipment.model, equipment.year ? String(equipment.year) : null]
+									.filter(Boolean)
+									.join(' · ')}
+							</p>
+						{/if}
 					</div>
 					<div class="flex shrink-0 items-center gap-2">
-					<a
-						href="/equipment/{equipment.id}/history"
-						class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-					>
-						History
-					</a>
-					<button
-						class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-						on:click={() => onEdit(equipment)}
-					>
-						Edit
-					</button>
-					<button
-						class="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-						on:click={() => onDelete(equipment)}
-					>
-						Delete
-					</button>
+						<a
+							href="/equipment/{equipment.id}/history"
+							class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+						>
+							Resources
+						</a>
+						<button
+							class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+							on:click={() => onEdit(equipment)}
+						>
+							Edit
+						</button>
+						<button
+							class="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+							on:click={() => onDelete(equipment)}
+						>
+							Delete
+						</button>
 					</div>
 				</div>
 				{#if equipment.next_due_summary}
 					<div class="w-full">
 						<span
-							class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-200 w-auto"
+							class="inline-flex w-auto items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-200"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -126,27 +118,28 @@
 				class="flex flex-wrap gap-x-6 gap-y-3 border-t border-gray-100 pt-4 dark:border-gray-700"
 			>
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+					<span
+						class="text-xs font-medium tracking-wider text-gray-400 uppercase dark:text-gray-500"
 						>Usage</span
 					>
-					<span class="text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">
+					<span class="text-sm font-medium text-gray-700 tabular-nums dark:text-gray-200">
 						{equipment.current_usage_value}
-						<span class="font-normal text-gray-500 dark:text-gray-400"
-							>{equipment.usage_unit}</span
-						>
+						<span class="font-normal text-gray-500 dark:text-gray-400">{equipment.usage_unit}</span>
 					</span>
 				</div>
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+					<span
+						class="text-xs font-medium tracking-wider text-gray-400 uppercase dark:text-gray-500"
 						>Spent</span
 					>
-					<span class="text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">
+					<span class="text-sm font-medium text-gray-700 tabular-nums dark:text-gray-200">
 						${(equipment.total_cost ?? 0).toFixed(2)}
 					</span>
 				</div>
 				{#if equipment.purchase_date}
 					<div class="flex items-baseline gap-1.5">
-						<span class="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+						<span
+							class="text-xs font-medium tracking-wider text-gray-400 uppercase dark:text-gray-500"
 							>Purchased</span
 						>
 						<span class="text-sm text-gray-600 dark:text-gray-300">

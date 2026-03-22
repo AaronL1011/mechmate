@@ -7,6 +7,7 @@ export interface Database {
 	tasks: TasksTable;
 	maintenance_logs: MaintenanceLogsTable;
 	maintenance_log_attachments: MaintenanceLogAttachmentsTable;
+	equipment_resources: EquipmentResourcesTable;
 	notification_subscriptions: NotificationSubscriptionsTable;
 	notification_settings: NotificationSettingsTable;
 	notification_log: NotificationLogTable;
@@ -119,6 +120,42 @@ export interface MaintenanceLogAttachmentsTable {
 export type MaintenanceLogAttachment = Selectable<MaintenanceLogAttachmentsTable>;
 export type NewMaintenanceLogAttachment = Insertable<MaintenanceLogAttachmentsTable>;
 export type MaintenanceLogAttachmentUpdate = Updateable<MaintenanceLogAttachmentsTable>;
+
+export type EquipmentResourceKind =
+	| 'owners_manual'
+	| 'service_manual'
+	| 'repair_order'
+	| 'invoice'
+	| 'other';
+
+export type EquipmentResourceExtractionStatus = 'pending' | 'ok' | 'failed' | 'skipped';
+
+export interface EquipmentResourcesTable {
+	id: Generated<number>;
+	equipment_id: number;
+	filename: string;
+	original_filename: string;
+	mime_type: string;
+	file_size: number;
+	file_path: string;
+	resource_kind: EquipmentResourceKind;
+	title: string | null;
+	notes: string | null;
+	extraction_status: EquipmentResourceExtractionStatus;
+	extracted_text: string | null;
+	text_truncated: number;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export type EquipmentResource = Selectable<EquipmentResourcesTable>;
+export type NewEquipmentResource = Insertable<EquipmentResourcesTable>;
+export type EquipmentResourceUpdate = Updateable<EquipmentResourcesTable>;
+
+export interface PatchEquipmentResourceRequest {
+	title?: string | null;
+	resource_kind?: EquipmentResourceKind;
+	notes?: string | null;
+}
 
 // Extended types for complex queries
 export interface TaskWithDetails extends Task {

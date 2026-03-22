@@ -6,6 +6,9 @@ import type {
 	MaintenanceLog,
 	MaintenanceLogAttachment,
 	NewMaintenanceLogAttachment,
+	EquipmentResource,
+	NewEquipmentResource,
+	EquipmentResourceUpdate,
 	TaskWithDetails,
 	DashboardStats,
 	CreateEquipmentRequest,
@@ -769,7 +772,8 @@ export const maintenanceLogRepository = {
 		if (updates.notes !== undefined) updateData.notes = updates.notes;
 		if (updates.cost !== undefined) updateData.cost = updates.cost;
 		if (updates.parts_used !== undefined) updateData.parts_used = updates.parts_used;
-		if (updates.service_provider !== undefined) updateData.service_provider = updates.service_provider;
+		if (updates.service_provider !== undefined)
+			updateData.service_provider = updates.service_provider;
 		if (Object.keys(updateData).length === 0) {
 			return db.selectFrom('maintenance_logs').selectAll().where('id', '=', id).executeTakeFirst();
 		}
@@ -786,7 +790,11 @@ export const maintenanceLogRepository = {
 		id: number,
 		additionalNotes: string
 	): Promise<MaintenanceLog | undefined> => {
-		const log = await db.selectFrom('maintenance_logs').selectAll().where('id', '=', id).executeTakeFirst();
+		const log = await db
+			.selectFrom('maintenance_logs')
+			.selectAll()
+			.where('id', '=', id)
+			.executeTakeFirst();
 		if (!log) return undefined;
 		if (!additionalNotes.trim()) return log;
 		const merged = mergeMaintenanceLogNotesForAppend(log.notes, additionalNotes);
@@ -876,6 +884,60 @@ export const maintenanceLogAttachmentRepository = {
 			.deleteFrom('maintenance_log_attachments')
 			.where('id', '=', id)
 			.execute();
+		return result.length > 0;
+	}
+};
+
+export const equipmentResourceRepository = {
+	getByEquipmentId: (db: Kysely<Database>, equipmentId: number): Promise<EquipmentResource[]> => {
+		return db
+			.selectFrom('equipment_resources')
+			.selectAll()
+			.where('equipment_id', '=', equipmentId)
+			.orderBy('created_at', 'desc')
+			.execute();
+	},
+
+	getById: (db: Kysely<Database>, id: number): Promise<EquipmentResource | undefined> => {
+		return db.selectFrom('equipment_resources').selectAll().where('id', '=', id).executeTakeFirst();
+	},
+
+	getByIdForEquipment: (
+		db: Kysely<Database>,
+		equipmentId: number,
+		resourceId: number
+	): Promise<EquipmentResource | undefined> => {
+		return db
+			.selectFrom('equipment_resources')
+			.selectAll()
+			.where('id', '=', resourceId)
+			.where('equipment_id', '=', equipmentId)
+			.executeTakeFirst();
+	},
+
+	create: async (db: Kysely<Database>, row: NewEquipmentResource): Promise<EquipmentResource> => {
+		return db
+			.insertInto('equipment_resources')
+			.values(row)
+			.returningAll()
+			.executeTakeFirstOrThrow();
+	},
+
+	update: async (
+		db: Kysely<Database>,
+		id: number,
+		patch: EquipmentResourceUpdate
+	): Promise<EquipmentResource | undefined> => {
+		return db
+			.updateTable('equipment_resources')
+			.set(patch)
+			.where('id', '=', id)
+			.returningAll()
+			.executeTakeFirst();
+	},
+
+	delete: async (db: Kysely<Database>, id: number): Promise<boolean> => {
+		const result = await db.deleteFrom('equipment_resources').where('id', '=', id).execute();
 		return result.length > 0;
 	}
 };

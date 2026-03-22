@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../types/db.js';
 import {
 	equipmentRepository,
+	equipmentResourceRepository,
 	taskRepository,
 	maintenanceLogRepository,
 	mergeMaintenanceLogNotesForAppend,
@@ -10,6 +11,7 @@ import {
 	taskTypeRepository,
 	globalSettingsRepository
 } from '../repositories.js';
+import { toEquipmentResourceClient } from '../equipment-resource-serialize.js';
 import { runProactiveAgent } from '../agent/proactive.js';
 import { buildBootstrapTasksForEquipment } from '../agent/bootstrap-schedule-templates.js';
 import { enrichBootstrapTasksWithLlm } from '../agent/bootstrap-task-copy-enrichment.js';
@@ -165,6 +167,49 @@ export const equipmentFunctions: LLMFunction[] = [
 				}
 			},
 			required: ['equipment_id']
+		}
+	},
+	{
+		name: 'list_equipment_resources',
+		description:
+			'List uploaded documents (manuals, invoices, etc.) for one equipment item, including short text previews when extraction succeeded.',
+		parameters: {
+			type: 'object',
+			properties: {
+				equipment_id: {
+					type: 'number',
+					description: 'Equipment ID'
+				}
+			},
+			required: ['equipment_id']
+		}
+	},
+	{
+		name: 'get_equipment_resource_excerpt',
+		description:
+			'Read a bounded excerpt of extracted plain text from one equipment resource (by resource id). Use after list_equipment_resources to ground answers in manuals. If extraction failed or is pending, the result explains why.',
+		parameters: {
+			type: 'object',
+			properties: {
+				resource_id: {
+					type: 'number',
+					description: 'ID of the resource row from list_equipment_resources'
+				},
+				equipment_id: {
+					type: 'number',
+					description:
+						'Optional: verify the resource belongs to this equipment (recommended when known)'
+				},
+				start_char: {
+					type: 'number',
+					description: 'Character offset into extracted text (default 0)'
+				},
+				max_chars: {
+					type: 'number',
+					description: 'Maximum characters to return (default 8000, hard cap 16000)'
+				}
+			},
+			required: ['resource_id']
 		}
 	}
 ];
@@ -542,6 +587,10 @@ export class FunctionExecutor {
 					return await this.updateEquipment(args.equipment_id, args.updates);
 				case 'delete_equipment':
 					return await this.deleteEquipment(args.equipment_id);
+				case 'list_equipment_resources':
+					return await this.listEquipmentResources(args.equipment_id);
+				case 'get_equipment_resource_excerpt':
+					return await this.getEquipmentResourceExcerpt(args);
 
 				// Task functions
 				case 'get_task_types':
@@ -661,6 +710,84 @@ export class FunctionExecutor {
 			data: { id },
 			confirmation_message: `Delete ${equipment.name}? This will also delete all associated tasks and maintenance logs.`,
 			requires_confirmation: true
+		};
+	}
+
+	private async listEquipmentResources(equipmentId: number): Promise<ActionResult> {
+		const equipment = await equipmentRepository.getById(this.context.db, equipmentId);
+		if (!equipment) {
+			throw new Error(`Equipment with ID ${equipmentId} not found`);
+		}
+		const rows = await equipmentResourceRepository.getByEquipmentId(this.context.db, equipmentId);
+		return {
+			type: 'query',
+			entity: 'equipment',
+			result: {
+				equipment_id: equipmentId,
+				equipment_name: equipment.name,
+				resources: rows.map(toEquipmentResourceClient)
+			},
+			requires_confirmation: false
+		};
+	}
+
+	private async getEquipmentResourceExcerpt(args: {
+		resource_id: number;
+		equipment_id?: number;
+		start_char?: number;
+		max_chars?: number;
+	}): Promise<ActionResult> {
+		const row = await equipmentResourceRepository.getById(this.context.db, args.resource_id);
+		if (!row) {
+			throw new Error(`Resource with ID ${args.resource_id} not found`);
+		}
+		if (args.equipment_id !== undefined && row.equipment_id !== args.equipment_id) {
+			throw new Error('Resource does not belong to the specified equipment');
+		}
+		const start = Math.max(0, Math.floor(args.start_char ?? 0));
+		const requested = Math.floor(args.max_chars ?? 8000);
+		const max = Math.min(16000, Math.max(256, requested));
+		if (row.extraction_status !== 'ok' || !row.extracted_text) {
+			return {
+				type: 'query',
+				entity: 'equipment',
+				result: {
+					resource_id: row.id,
+					equipment_id: row.equipment_id,
+					original_filename: row.original_filename,
+					resource_kind: row.resource_kind,
+					extraction_status: row.extraction_status,
+					excerpt: null,
+					message:
+						row.extraction_status === 'pending'
+							? 'Text extraction is still pending or was not run.'
+							: row.extraction_status === 'skipped'
+								? 'No extractable text for this file type or content (e.g. scanned PDF without OCR).'
+								: row.extraction_status === 'failed'
+									? 'Text extraction failed for this file.'
+									: 'No extracted text available.'
+				},
+				requires_confirmation: false
+			};
+		}
+		const full = row.extracted_text;
+		const slice = full.slice(start, start + max);
+		return {
+			type: 'query',
+			entity: 'equipment',
+			result: {
+				resource_id: row.id,
+				equipment_id: row.equipment_id,
+				original_filename: row.original_filename,
+				resource_kind: row.resource_kind,
+				start_char: start,
+				max_chars: max,
+				total_extracted_length: full.length,
+				text_truncated_in_storage: Number(row.text_truncated) === 1,
+				excerpt: slice,
+				has_more: start + slice.length < full.length
+			},
+			requires_confirmation: false
 		};
 	}
 
@@ -851,7 +978,8 @@ export class FunctionExecutor {
 			if (!Number.isNaN(c)) updates.cost = c;
 		}
 		if (raw.parts_used !== undefined) updates.parts_used = raw.parts_used as string;
-		if (raw.service_provider !== undefined) updates.service_provider = raw.service_provider as string;
+		if (raw.service_provider !== undefined)
+			updates.service_provider = raw.service_provider as string;
 		return updates;
 	}
 

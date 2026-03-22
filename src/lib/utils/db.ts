@@ -110,6 +110,32 @@ export async function initializeTables(db: Kysely<Database>) {
 		)
 		.execute();
 
+	await db.schema
+		.createTable('equipment_resources')
+		.ifNotExists()
+		.addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+		.addColumn('equipment_id', 'integer', (col) => col.notNull())
+		.addColumn('filename', 'text', (col) => col.notNull())
+		.addColumn('original_filename', 'text', (col) => col.notNull())
+		.addColumn('mime_type', 'text', (col) => col.notNull())
+		.addColumn('file_size', 'integer', (col) => col.notNull())
+		.addColumn('file_path', 'text', (col) => col.notNull())
+		.addColumn('resource_kind', 'text', (col) => col.notNull().defaultTo('other'))
+		.addColumn('title', 'text')
+		.addColumn('notes', 'text')
+		.addColumn('extraction_status', 'text', (col) => col.notNull().defaultTo('pending'))
+		.addColumn('extracted_text', 'text')
+		.addColumn('text_truncated', 'integer', (col) => col.notNull().defaultTo(0))
+		.addColumn('created_at', 'text', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+		.addForeignKeyConstraint(
+			'equipment_resources_equipment_fk',
+			['equipment_id'],
+			'equipment',
+			['id'],
+			(cb) => cb.onDelete('cascade')
+		)
+		.execute();
+
 	// Notification tables
 	await db.schema
 		.createTable('notification_subscriptions')
@@ -200,6 +226,12 @@ export async function initializeTables(db: Kysely<Database>) {
 		.ifNotExists()
 		.on('maintenance_log_attachments')
 		.column('maintenance_log_id')
+		.execute();
+	await db.schema
+		.createIndex('idx_equipment_resources_equipment')
+		.ifNotExists()
+		.on('equipment_resources')
+		.column('equipment_id')
 		.execute();
 
 	// Notification indexes

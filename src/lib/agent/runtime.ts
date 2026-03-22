@@ -34,6 +34,7 @@ export interface RunAgentTurnOptions {
 	queryOnly?: boolean;
 	maxIterations?: number;
 	responseFormat?: ResponseOutputFormat;
+	excludeToolNames?: readonly string[];
 }
 
 export interface RunAgentTurnResult {
@@ -52,8 +53,8 @@ export async function runAgentTurn(
 	systemPrompt: string,
 	options: RunAgentTurnOptions = {}
 ): Promise<RunAgentTurnResult> {
-	const { queryOnly = false, maxIterations = 5, responseFormat } = options;
-	const tools = getToolDefinitionsForLLM(queryOnly);
+	const { queryOnly = false, maxIterations = 5, responseFormat, excludeToolNames } = options;
+	const tools = getToolDefinitionsForLLM(queryOnly, { excludeToolNames });
 	const llmTools = tools.map((func) => ({ type: 'function' as const, function: func }));
 
 	let iteration = 0;
@@ -95,9 +96,7 @@ export async function runAgentTurn(
 					}
 					currentMessages.push({
 						role: 'tool',
-						content: JSON.stringify(
-							actionResult.result ?? actionResult.error ?? 'No result'
-						),
+						content: JSON.stringify(actionResult.result ?? actionResult.error ?? 'No result'),
 						tool_call_id: toolCall.id
 					});
 					continue;
@@ -121,8 +120,7 @@ export async function runAgentTurn(
 		}
 
 		const rawContent =
-			choice.message.content ||
-			'I need more information to help you with that request.';
+			choice.message.content || 'I need more information to help you with that request.';
 
 		let structuredMessage: unknown | undefined;
 		if (responseFormat && rawContent) {

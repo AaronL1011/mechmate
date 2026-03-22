@@ -4,6 +4,7 @@ import type { Kysely } from 'kysely';
 import type { Database, ProactiveSuggestion } from '$lib/types/db.js';
 import { equipmentRepository } from '$lib/repositories.js';
 import { runAgentTurn, type ResponseOutputFormat } from './runtime.js';
+import { TOOLS_EXCLUDED_FROM_PROACTIVE_AGENT } from './tools.js';
 import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
@@ -60,7 +61,7 @@ function buildStarterTaskSections(
 			title,
 			content: `**${eq.name}** has no maintenance tasks yet. Want to have Mech draft a starter schedule you can review and confirm?`,
 			agent_action: `Propose a starter maintenance schedule for ${eq.name} (equipment id: ${eq.id}).`,
-			agent_action_label: "create schedule"
+			agent_action_label: 'create schedule'
 		});
 	}
 	return sections;
@@ -81,18 +82,18 @@ export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
 		schema: {
 			type: 'object',
 			properties: {
-				sections: { 
-					type: 'array', 
-					items: { 
-						type: 'object', 
-						properties: { 
-							title: { type: 'string' }, 
-							content: { type: 'string' }, 
+				sections: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							title: { type: 'string' },
+							content: { type: 'string' },
 							agent_action: { type: 'string' },
 							agent_action_label: { type: 'string' }
 						},
 						required: ['title', 'content']
-					} 
+					}
 				}
 			}
 		}
@@ -110,9 +111,7 @@ async function computeTaskStateHash(db: Kysely<Database>): Promise<string> {
 		.select(['id', 'updated_at'])
 		.orderBy('id')
 		.execute();
-	return createHash('sha256')
-		.update(JSON.stringify({ tasks, equipment }))
-		.digest('hex');
+	return createHash('sha256').update(JSON.stringify({ tasks, equipment })).digest('hex');
 }
 
 export async function runProactiveAgent(
@@ -144,7 +143,7 @@ export async function runProactiveAgent(
 		.limit(PROACTIVE_MAX_ACTIVE_SUGGESTIONS)
 		.execute();
 
-	const existingSuggestions = existingRows.flatMap(row => {
+	const existingSuggestions = existingRows.flatMap((row) => {
 		try {
 			const parsed = JSON.parse(row.result) as { title?: string; content?: string };
 			if (parsed?.title && parsed?.content) {
@@ -158,14 +157,13 @@ export async function runProactiveAgent(
 
 	const systemPrompt = getProactiveSystemPrompt(toneContext ?? '', existingSuggestions);
 	const executor = new FunctionExecutor({ db });
-	const messages: LLMMessage[] = [
-		{ role: 'system', content: systemPrompt },
-	];
+	const messages: LLMMessage[] = [{ role: 'system', content: systemPrompt }];
 
 	const result = await runAgentTurn(db, messages, executor, systemPrompt, {
 		queryOnly: true,
 		maxIterations: 5,
-		responseFormat: PROACTIVE_SECTIONS_RESPONSE_FORMAT
+		responseFormat: PROACTIVE_SECTIONS_RESPONSE_FORMAT,
+		excludeToolNames: TOOLS_EXCLUDED_FROM_PROACTIVE_AGENT
 	});
 
 	if (result.error) {
@@ -249,7 +247,7 @@ export async function getLatestProactiveResults(
 		.orderBy('id', 'desc')
 		.limit(PROACTIVE_MAX_ACTIVE_SUGGESTIONS)
 		.execute();
-	return rows.map(r => ({
+	return rows.map((r) => ({
 		id: r.id,
 		result: r.result,
 		created_at: r.created_at,
