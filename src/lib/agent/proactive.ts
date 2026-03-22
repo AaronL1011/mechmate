@@ -9,12 +9,16 @@ import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
 import {
 	PROACTIVE_MAX_ACTIVE_SUGGESTIONS,
+	STARTER_SECTION_TITLE_PREFIX,
 	type ProactiveSection
 } from './proactiveShared.js';
 
-export { PROACTIVE_MAX_ACTIVE_SUGGESTIONS, type ProactiveSection } from './proactiveShared.js';
+export {
+	PROACTIVE_MAX_ACTIVE_SUGGESTIONS,
+	STARTER_SECTION_TITLE_PREFIX,
+	type ProactiveSection
+} from './proactiveShared.js';
 
-export const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks for ';
 const MAX_AGENT_ACTION_LABEL_LEN = 40;
 
 function truncateAgentActionLabel(text: string): string {

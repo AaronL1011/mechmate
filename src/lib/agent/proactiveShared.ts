@@ -1,6 +1,9 @@
 /** Safe to import from browser code — no Node or DB dependencies. */
 export const PROACTIVE_MAX_ACTIVE_SUGGESTIONS = 3;
 
+/** Title prefix for system-generated starter cards; kept here to avoid proactive ↔ prompts import cycles. */
+export const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks for ';
+
 export interface ProactiveSection {
 	title: string;
 	content: string;

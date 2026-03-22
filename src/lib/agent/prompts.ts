@@ -1,5 +1,5 @@
 import type { GlobalSettingsValues } from '$lib/types/db.js';
-import { STARTER_SECTION_TITLE_PREFIX } from './proactive';
+import { STARTER_SECTION_TITLE_PREFIX } from './proactiveShared.js';
 
 const INTERACTIVE_SYSTEM_PROMPT_BASE = `You are Mech, the maintenance management assistant. Your job is to help users manage equipment, tasks, and maintenance logs using natural language while promoting learning and mechanical understanding.
 
