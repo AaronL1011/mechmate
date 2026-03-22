@@ -14,7 +14,14 @@ import {
 
 export { PROACTIVE_MAX_ACTIVE_SUGGESTIONS, type ProactiveSection } from './proactiveShared.js';
 
-const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks — ';
+export const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks for ';
+const MAX_AGENT_ACTION_LABEL_LEN = 40;
+
+function truncateAgentActionLabel(text: string): string {
+	const t = text.trim();
+	if (t.length <= MAX_AGENT_ACTION_LABEL_LEN) return t;
+	return `${t.slice(0, MAX_AGENT_ACTION_LABEL_LEN - 1)}…`;
+}
 
 async function enforceProactiveActiveCap(db: Kysely<Database>): Promise<void> {
 	const rows = await db
@@ -56,7 +63,8 @@ function buildStarterTaskSections(
 		sections.push({
 			title,
 			content: `**${eq.name}** has no maintenance tasks yet. Want to have Mech draft a starter schedule you can review and confirm?`,
-			agent_action: `Propose a starter maintenance schedule for ${eq.name} (equipment id: ${eq.id}).`
+			agent_action: `Propose a starter maintenance schedule for ${eq.name} (equipment id: ${eq.id}).`,
+			agent_action_label: "create schedule"
 		});
 	}
 	return sections;
@@ -84,7 +92,8 @@ export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
 						properties: { 
 							title: { type: 'string' }, 
 							content: { type: 'string' }, 
-							agent_action: { type: 'string' } 
+							agent_action: { type: 'string' },
+							agent_action_label: { type: 'string' }
 						},
 						required: ['title', 'content']
 					} 

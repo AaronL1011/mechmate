@@ -37,12 +37,30 @@
 				typeof (parsed as ProactiveSection).title === 'string' &&
 				typeof (parsed as ProactiveSection).content === 'string'
 			) {
-				return parsed as ProactiveSection;
+				const section = parsed as ProactiveSection;
+				const rawLabel = section.agent_action_label;
+				const agent_action_label =
+					typeof rawLabel === 'string' && rawLabel.trim().length > 0
+						? rawLabel.trim()
+						: undefined;
+				return { ...section, agent_action_label };
 			}
 		} catch {
 			// fall through to legacy
 		}
 		return { title: 'Summary', content: result };
+	}
+
+	function approveButtonText(section: ProactiveSection): string {
+		const label = section.agent_action_label?.trim();
+		return label && label.length > 0 ? label : 'approve';
+	}
+
+	function approveButtonAriaLabel(section: ProactiveSection): string {
+		const text = approveButtonText(section);
+		return text === 'Approve'
+			? `Approve suggestion — ${section.title}`
+			: `Approve: ${text}`;
 	}
 
 	const items = $derived(
@@ -171,10 +189,10 @@
 								type="button"
 								onclick={() => approve(item.id, item.agent_action!)}
 								disabled={approvingIds.has(item.id) || dismissingIds.has(item.id)}
-								aria-label="Approve {item.title}"
-								class="text-sm lg:text-base rounded p-1 px-2 text-emerald-600 opacity-70 transition-opacity hover:bg-emerald-200/50 hover:opacity-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-800/50"
+								aria-label={approveButtonAriaLabel(item)}
+								class="text-left text-sm leading-tight break-words lg:text-base rounded p-1 px-2 text-emerald-600 opacity-70 transition-opacity hover:bg-emerald-200/50 hover:opacity-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-800/50"
 							>
-								action
+								{approveButtonText(item)}
 							</button>
 						{/if}
 						<button
