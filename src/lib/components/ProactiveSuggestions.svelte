@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 	import type { ProactiveSuggestion } from '$lib/types/db.js';
-	import type { ProactiveSection } from '$lib/agent/proactive.js';
+	import {
+		PROACTIVE_MAX_ACTIVE_SUGGESTIONS,
+		type ProactiveSection
+	} from '$lib/agent/proactiveShared.js';
 
 	interface Props {
 		suggestions: ProactiveSuggestion[];
@@ -42,7 +46,7 @@
 	}
 
 	const items = $derived(
-		suggestions.map((s) => ({
+		suggestions.slice(0, PROACTIVE_MAX_ACTIVE_SUGGESTIONS).map((s) => ({
 			id: s.id,
 			createdAt: s.created_at,
 			...parseSuggestionResult(s.result)
@@ -51,6 +55,20 @@
 
 	let dismissingIds = $state<Set<number>>(new Set());
 	let approvingIds = $state<Set<number>>(new Set());
+	let refreshing = $state(false);
+
+	async function refreshSuggestions() {
+		if (refreshing) return;
+		refreshing = true;
+		try {
+			const res = await fetch('/api/agent/suggestions', { method: 'POST' });
+			if (res.ok) {
+				await invalidateAll();
+			}
+		} finally {
+			refreshing = false;
+		}
+	}
 
 	async function approve(id: number, agentAction: string) {
 		if (approvingIds.has(id)) return;
@@ -89,13 +107,33 @@
 </script>
 
 <div class="mb-8">
-	<div class="mb-3 flex items-center justify-between">
+	<div class="mb-3 flex items-center justify-between gap-2">
 		<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Mech suggests</h2>
-		{#if items.length > 0}
-			<p class="text-xs text-gray-500 dark:text-gray-400">
-				{items.length} suggestion{items.length === 1 ? '' : 's'}
-			</p>
-		{/if}
+		<button
+			type="button"
+			class="inline-flex shrink-0 rounded p-1 text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200"
+			onclick={refreshSuggestions}
+			disabled={refreshing}
+			aria-label="Refresh suggestions"
+			aria-busy={refreshing}
+		>
+			<span
+				class="proactive-refresh-icon inline-flex"
+				class:proactive-refresh-icon--spinning={refreshing}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-5 w-5 shrink-0"
+					fill="currentColor"
+					viewBox="0 0 256 256"
+					aria-hidden="true"
+				>
+					<path
+						d="M228,48V96a12,12,0,0,1-12,12H168a12,12,0,0,1,0-24h19l-7.8-7.8a75.55,75.55,0,0,0-53.32-22.26h-.43A75.49,75.49,0,0,0,72.39,75.57,12,12,0,1,1,55.61,58.41a99.38,99.38,0,0,1,69.87-28.47H126A99.42,99.42,0,0,1,196.2,59.23L204,67V48a12,12,0,0,1,24,0ZM183.61,180.43a75.49,75.49,0,0,1-53.09,21.63h-.43A75.55,75.55,0,0,1,76.77,179.8L69,172H88a12,12,0,0,0,0-24H40a12,12,0,0,0-12,12v48a12,12,0,0,0,24,0V189l7.8,7.8A99.42,99.42,0,0,0,130,226.06h.56a99.38,99.38,0,0,0,69.87-28.47,12,12,0,0,0-16.78-17.16Z"
+					></path>
+				</svg>
+			</span>
+		</button>
 	</div>
 
 	{#if items.length === 0}
@@ -103,7 +141,11 @@
 			class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50"
 		>
 			<p class="text-sm text-gray-500 dark:text-gray-400">
-				{dismissingIds.size > 0 ? 'Dismissing…' : 'No suggestions right now.'}
+				{dismissingIds.size > 0
+					? 'Dismissing…'
+					: refreshing
+						? 'Refreshing…'
+						: 'No suggestions right now.'}
 			</p>
 		</div>
 	{:else}
@@ -161,3 +203,33 @@
 		{/if}
 	{/if}
 </div>
+
+<style>
+	.proactive-refresh-icon {
+		transform-origin: center;
+	}
+
+	.proactive-refresh-icon--spinning {
+		animation: proactive-refresh-spin 1.5s infinite;
+	}
+
+	@keyframes proactive-refresh-spin {
+		0% {
+			transform: rotate(0deg);
+			animation-timing-function: ease-in-out;
+		}
+		50% {
+			transform: rotate(180deg);
+			animation-timing-function: ease-in-out;
+		}
+		100% {
+			transform: rotate(360deg);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.proactive-refresh-icon--spinning {
+			animation: none;
+		}
+	}
+</style>

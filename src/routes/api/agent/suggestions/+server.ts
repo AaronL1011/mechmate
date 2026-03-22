@@ -1,6 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getLatestProactiveResults, dismissProactiveSuggestion } from '$lib/agent/proactive.js';
+import {
+	getLatestProactiveResults,
+	dismissProactiveSuggestion,
+	runProactiveAgent
+} from '$lib/agent/proactive.js';
+import { getAssistantToneContext } from '$lib/agent/prompts.js';
+import { globalSettingsRepository } from '$lib/repositories.js';
+import { llmService } from '$lib/services/llm.js';
+import type { GlobalSettingsValues } from '$lib/types/db.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	const rows = await getLatestProactiveResults(locals.db);
@@ -8,6 +16,49 @@ export const GET: RequestHandler = async ({ locals }) => {
 		return new Response(null, { status: 404 });
 	}
 	return json(rows);
+};
+
+export const POST: RequestHandler = async ({ locals }) => {
+	try {
+		if (!llmService.isConfigured()) {
+			return json(
+				{
+					success: false,
+					error: 'LLM service is not configured. Please check environment variables.',
+					code: 'LLM_NOT_CONFIGURED'
+				},
+				{ status: 500 }
+			);
+		}
+
+		const tone = (await globalSettingsRepository.getTypedValue(
+			locals.db,
+			'assistant_tone',
+			'professional'
+		)) as GlobalSettingsValues['assistant_tone'];
+		const toneContext = getAssistantToneContext(tone);
+		const result = await runProactiveAgent(locals.db, {
+			toneContext,
+			skipChangeCheck: true
+		});
+
+		return json({
+			success: true,
+			...(result == null
+				? { message: 'No new suggestions generated; data may be unchanged.' }
+				: {})
+		});
+	} catch (error) {
+		console.error('Suggestions POST error:', error);
+		return json(
+			{
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error',
+				code: 'INTERNAL_ERROR'
+			},
+			{ status: 500 }
+		);
+	}
 };
 
 export const PATCH: RequestHandler = async ({ request, locals }) => {

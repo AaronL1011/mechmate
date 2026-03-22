@@ -7,9 +7,30 @@ import { runAgentTurn, type ResponseOutputFormat } from './runtime.js';
 import { FunctionExecutor } from './executor.js';
 import { getProactiveSystemPrompt } from './prompts.js';
 import type { LLMMessage } from '$lib/services/llm.js';
+import {
+	PROACTIVE_MAX_ACTIVE_SUGGESTIONS,
+	type ProactiveSection
+} from './proactiveShared.js';
 
-const PROACTIVE_MAX_SECTIONS = 3;
+export { PROACTIVE_MAX_ACTIVE_SUGGESTIONS, type ProactiveSection } from './proactiveShared.js';
+
 const STARTER_SECTION_TITLE_PREFIX = 'Starter tasks — ';
+
+async function enforceProactiveActiveCap(db: Kysely<Database>): Promise<void> {
+	const rows = await db
+		.selectFrom('proactive_suggestions')
+		.select('id')
+		.where('dismissed_at', 'is', null)
+		.orderBy('id', 'desc')
+		.execute();
+	if (rows.length <= PROACTIVE_MAX_ACTIVE_SUGGESTIONS) return;
+	const toDismiss = rows.slice(PROACTIVE_MAX_ACTIVE_SUGGESTIONS).map((r) => r.id);
+	await db
+		.updateTable('proactive_suggestions')
+		.set({ dismissed_at: new Date().toISOString() })
+		.where('id', 'in', toDismiss)
+		.execute();
+}
 
 async function getEquipmentWithNoTasks(
 	db: Kysely<Database>
@@ -45,13 +66,7 @@ function mergeProactiveSections(
 	starterSections: ProactiveSection[],
 	llmSections: ProactiveSection[]
 ): ProactiveSection[] {
-	return [...starterSections, ...llmSections].slice(0, PROACTIVE_MAX_SECTIONS);
-}
-
-export interface ProactiveSection {
-	title: string;
-	content: string;
-	agent_action?: string;
+	return [...starterSections, ...llmSections].slice(0, PROACTIVE_MAX_ACTIVE_SUGGESTIONS);
 }
 
 export const PROACTIVE_SECTIONS_RESPONSE_FORMAT: ResponseOutputFormat = {
@@ -114,11 +129,14 @@ export async function runProactiveAgent(
 		}
 	}
 
+	await enforceProactiveActiveCap(db);
+
 	const existingRows = await db
 		.selectFrom('proactive_suggestions')
 		.select('result')
 		.where('dismissed_at', 'is', null)
 		.orderBy('id', 'desc')
+		.limit(PROACTIVE_MAX_ACTIVE_SUGGESTIONS)
 		.execute();
 
 	const existingSuggestions = existingRows.flatMap(row => {
@@ -191,6 +209,7 @@ export async function storeProactiveResults(
 			[...sections].reverse().map((s) => ({ result: JSON.stringify(s), content_hash: contentHash }))
 		)
 		.execute();
+	await enforceProactiveActiveCap(db);
 }
 
 export async function pruneOldSuggestions(db: Kysely<Database>): Promise<number> {
@@ -217,11 +236,13 @@ export async function dismissProactiveSuggestion(
 export async function getLatestProactiveResults(
 	db: Kysely<Database>
 ): Promise<ProactiveSuggestion[]> {
+	await enforceProactiveActiveCap(db);
 	const rows = await db
 		.selectFrom('proactive_suggestions')
 		.select(['id', 'result', 'created_at'])
 		.where('dismissed_at', 'is', null)
 		.orderBy('id', 'desc')
+		.limit(PROACTIVE_MAX_ACTIVE_SUGGESTIONS)
 		.execute();
 	return rows.map(r => ({
 		id: r.id,

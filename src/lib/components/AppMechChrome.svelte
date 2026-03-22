@@ -73,7 +73,7 @@
 		<span
 			class="relative z-[1] inline-flex min-h-20 min-w-20 items-center justify-center gap-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-3 py-3 text-white shadow-md ring-1 ring-white/25 transition-[box-shadow,filter] duration-200 ring-inset group-hover:shadow-lg group-hover:shadow-blue-500/35 group-hover:brightness-[1.05] group-focus-visible:shadow-lg group-focus-visible:shadow-blue-500/40 group-disabled:from-gray-500 group-disabled:to-gray-600 group-disabled:shadow-none sm:px-4 dark:from-blue-500 dark:to-blue-700 dark:ring-white/15 dark:group-hover:shadow-blue-400/30 dark:group-hover:brightness-110"
 		>
-			<img src="/robot.png" alt="" class="h-10 w-10 shrink-0 drop-shadow-sm sm:h-10 sm:w-10 opacity-75" />
+			<img src="/robot.png" alt="" class="h-10 w-10 shrink-0 drop-shadow-sm sm:h-10 sm:w-10 opacity-80 mix-blend-luminosity" />
 			<span class="hidden sm:inline text-lg">Ask Mech</span>
 		</span>
 	</button>

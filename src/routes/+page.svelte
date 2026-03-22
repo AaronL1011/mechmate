@@ -239,15 +239,13 @@
 			</div>
 		{/if}
 
-		{#if proactiveSuggestions.length > 0}
-			<ProactiveSuggestions
-				suggestions={proactiveSuggestions}
-				onDismiss={() => invalidateAll()}
-				onApprove={(action) => {
-					mechAssistantLaunch.set({ prompt: action });
-				}}
-			/>
-		{/if}
+		<ProactiveSuggestions
+			suggestions={proactiveSuggestions}
+			onDismiss={() => invalidateAll()}
+			onApprove={(action) => {
+				mechAssistantLaunch.set({ prompt: action });
+			}}
+		/>
 
 		<!-- View Mode Toggle -->
 		<div class="mb-6 flex items-center justify-between">
