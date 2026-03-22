@@ -33,6 +33,12 @@
 	const readOnlyClass =
 		'block max-w-full min-w-0 break-words rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 dark:bg-gray-700/80 dark:text-white';
 
+	/** Deep clone without structuredClone (avoids DataCloneError on Svelte proxies / non-cloneables). */
+	function deepCloneEditablePayload<T>(value: T): T {
+		if (value === null || typeof value !== 'object') return value;
+		return JSON.parse(JSON.stringify(value)) as T;
+	}
+
 	onMount(async () => {
 		try {
 			const [equipmentTypesRes, taskTypesRes] = await Promise.all([
@@ -54,13 +60,34 @@
 		}
 	});
 
-	$effect(() => {
+	// Run before DOM updates so fields (e.g. notes on update actions) show the correct initial value
+	// on first paint. Plain $effect runs after paint, which left nested `updates.*` controls empty.
+	$effect.pre(() => {
 		if (action.data) {
 			const enhancedData = getEnhancedData(action.data, action.entity);
-			editedData = structuredClone(enhancedData);
+			editedData = deepCloneEditablePayload(enhancedData);
 			dataSnapshot = JSON.stringify(enhancedData);
+		} else {
+			editedData = {};
+			dataSnapshot = null;
 		}
 	});
+
+	function usesNestedUpdates(): boolean {
+		return (
+			action.type === 'update' &&
+			action.data?.updates != null &&
+			typeof action.data.updates === 'object' &&
+			!Array.isArray(action.data.updates)
+		);
+	}
+
+	function getEditedValue(fieldKey: string): unknown {
+		if (usesNestedUpdates()) {
+			return editedData.updates?.[fieldKey];
+		}
+		return editedData[fieldKey];
+	}
 
 	function isDirty(): boolean {
 		return dataSnapshot !== null && JSON.stringify(editedData) !== dataSnapshot;
@@ -303,6 +330,12 @@
 		return `acf-${fieldKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 	}
 
+	function selectStringValue(fieldKey: string): string {
+		const v = getEditedValue(fieldKey);
+		if (v == null || v === '') return '';
+		return String(v);
+	}
+
 	function getPartsArray(partsUsed: any): string[] {
 		if (!partsUsed) return [];
 		if (typeof partsUsed === 'string') {
@@ -322,17 +355,17 @@
 	}
 
 	function addPart() {
-		const currentParts = getPartsArray(editedData.parts_used);
+		const currentParts = getPartsArray(getEditedValue('parts_used'));
 		setPartsArray([...currentParts, '']);
 	}
 
 	function removePart(index: number) {
-		const currentParts = getPartsArray(editedData.parts_used);
+		const currentParts = getPartsArray(getEditedValue('parts_used'));
 		setPartsArray(currentParts.filter((_, i) => i !== index));
 	}
 
 	function updatePart(index: number, value: string) {
-		const currentParts = getPartsArray(editedData.parts_used);
+		const currentParts = getPartsArray(getEditedValue('parts_used'));
 		currentParts[index] = value;
 		setPartsArray(currentParts);
 	}
@@ -382,7 +415,7 @@
 			const template = getEquipmentTemplate();
 			return { ...template, ...data };
 		} else if (entity === 'task_batch' && action.type === 'create') {
-			return structuredClone(data);
+			return deepCloneEditablePayload(data);
 		} else if (entity === 'task' && action.type === 'create') {
 			const template = getTaskTemplate();
 			return { ...template, ...data };
@@ -405,15 +438,12 @@
 	}
 
 	function updateField(fieldKey: string, value: any) {
-		if (action.data?.updates) {
-			if (fieldKey in action.data.updates) {
-				editedData.updates[fieldKey] = value;
-			} else {
-				editedData[fieldKey] = value;
-			}
-		} else {
-			editedData[fieldKey] = value;
+		if (usesNestedUpdates()) {
+			if (!editedData.updates) editedData.updates = {};
+			editedData.updates[fieldKey] = value;
+			return;
 		}
+		editedData[fieldKey] = value;
 	}
 
 	function taskBatchCadenceLine(task: Record<string, unknown>): string {
@@ -561,7 +591,7 @@
 										{#if item.fieldKey === 'equipment_type_id'}
 											<select
 												id={fieldDomId(item.fieldKey)}
-												value={editedData[item.fieldKey]}
+												value={selectStringValue(item.fieldKey)}
 												onchange={(e) =>
 													updateField(
 														item.fieldKey,
@@ -576,7 +606,7 @@
 										{:else if item.fieldKey === 'task_type_id'}
 											<select
 												id={fieldDomId(item.fieldKey)}
-												value={editedData[item.fieldKey]}
+												value={selectStringValue(item.fieldKey)}
 												onchange={(e) =>
 													updateField(
 														item.fieldKey,
@@ -591,7 +621,7 @@
 										{:else if item.fieldKey === 'priority'}
 											<select
 												id={fieldDomId(item.fieldKey)}
-												value={editedData[item.fieldKey]}
+												value={selectStringValue(item.fieldKey)}
 												onchange={(e) =>
 													updateField(item.fieldKey, (e.target as HTMLSelectElement).value)}
 												class={controlClass}
@@ -604,7 +634,7 @@
 										{:else if item.fieldKey === 'status'}
 											<select
 												id={fieldDomId(item.fieldKey)}
-												value={editedData[item.fieldKey]}
+												value={selectStringValue(item.fieldKey)}
 												onchange={(e) =>
 													updateField(item.fieldKey, (e.target as HTMLSelectElement).value)}
 												class={controlClass}
@@ -616,7 +646,7 @@
 										{:else if item.fieldKey === 'usage_unit'}
 											<select
 												id={fieldDomId(item.fieldKey)}
-												value={editedData[item.fieldKey]}
+												value={selectStringValue(item.fieldKey)}
 												onchange={(e) =>
 													updateField(item.fieldKey, (e.target as HTMLSelectElement).value)}
 												class={controlClass}
@@ -629,7 +659,7 @@
 											</select>
 										{/if}
 									{:else if inputType === 'parts_array'}
-										{@const partsArray = getPartsArray(editedData[item.fieldKey])}
+										{@const partsArray = getPartsArray(getEditedValue(item.fieldKey))}
 										<div class="space-y-2">
 											{#each partsArray as part, index (`${item.fieldKey}-${index}`)}
 												<div class="flex min-w-0 items-center gap-2">
@@ -683,7 +713,7 @@
 									{:else if inputType === 'textarea'}
 										<textarea
 											id={fieldDomId(item.fieldKey)}
-											value={editedData[item.fieldKey] || ''}
+											value={String(getEditedValue(item.fieldKey) ?? '')}
 											oninput={(e) =>
 												updateField(item.fieldKey, (e.target as HTMLTextAreaElement).value)}
 											rows="3"
@@ -693,7 +723,7 @@
 										<input
 											id={fieldDomId(item.fieldKey)}
 											type="date"
-											value={editedData[item.fieldKey] || ''}
+											value={String(getEditedValue(item.fieldKey) ?? '')}
 											oninput={(e) =>
 												updateField(item.fieldKey, (e.target as HTMLInputElement).value)}
 											class={controlClass}
@@ -707,7 +737,7 @@
 												? (new Date().getFullYear() + 1).toString()
 												: undefined}
 											step={item.fieldKey === 'cost' ? '0.01' : '1'}
-											value={editedData[item.fieldKey] ?? ''}
+											value={getEditedValue(item.fieldKey) ?? ''}
 											oninput={(e) => {
 												const raw = (e.target as HTMLInputElement).value;
 												const numValue =
@@ -720,7 +750,7 @@
 										<input
 											id={fieldDomId(item.fieldKey)}
 											type="text"
-											value={editedData[item.fieldKey] ?? ''}
+											value={String(getEditedValue(item.fieldKey) ?? '')}
 											oninput={(e) =>
 												updateField(item.fieldKey, (e.target as HTMLInputElement).value)}
 											class={controlClass}

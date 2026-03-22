@@ -12,6 +12,8 @@ import type {
 	CreateTaskRequest,
 	UpdateEquipmentRequest,
 	UpdateTaskRequest,
+	UpdateMaintenanceLogRequest,
+	MaintenanceLogsQueryFilter,
 	NewEquipment,
 	NewTask,
 	NewMaintenanceLog,
@@ -30,6 +32,18 @@ import type {
 } from './types/db.js';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+
+export function mergeMaintenanceLogNotesForAppend(
+	existingNotes: string | undefined,
+	additionalNotes: string
+): string {
+	const trimmed = additionalNotes.trim();
+	if (!trimmed) return (existingNotes ?? '').trim();
+	const stamp = new Date().toISOString();
+	const block = `[${stamp}]\n${trimmed}`;
+	const base = (existingNotes ?? '').trim();
+	return base ? `${base}\n\n${block}` : block;
+}
 
 // Helper functions for notification boolean/integer conversion
 function convertSettingsToDisplay(settings: NotificationSettings): NotificationSettingsDisplay {
@@ -658,6 +672,30 @@ export const maintenanceLogRepository = {
 			.execute();
 	},
 
+	listWithFilters: async (
+		db: Kysely<Database>,
+		filter: MaintenanceLogsQueryFilter
+	): Promise<MaintenanceLog[]> => {
+		let query = db.selectFrom('maintenance_logs').selectAll();
+		if (filter.equipment_id != null) {
+			query = query.where('equipment_id', '=', filter.equipment_id);
+		}
+		if (filter.task_id != null) {
+			query = query.where('task_id', '=', filter.task_id);
+		}
+		if (filter.date_range?.start_date) {
+			query = query.where('completed_date', '>=', filter.date_range.start_date);
+		}
+		if (filter.date_range?.end_date) {
+			query = query.where('completed_date', '<=', filter.date_range.end_date);
+		}
+		query = query.orderBy('completed_date', 'desc');
+		if (filter.limit != null && filter.limit > 0) {
+			query = query.limit(filter.limit);
+		}
+		return query.execute();
+	},
+
 	getById: (db: Kysely<Database>, id: number): Promise<MaintenanceLog | undefined> => {
 		return db.selectFrom('maintenance_logs').selectAll().where('id', '=', id).executeTakeFirst();
 	},
@@ -715,6 +753,44 @@ export const maintenanceLogRepository = {
 			.executeTakeFirstOrThrow();
 
 		return result;
+	},
+
+	update: async (
+		db: Kysely<Database>,
+		id: number,
+		updates: UpdateMaintenanceLogRequest
+	): Promise<MaintenanceLog | undefined> => {
+		const updateData: Partial<{
+			notes: string;
+			cost: number;
+			parts_used: string;
+			service_provider: string;
+		}> = {};
+		if (updates.notes !== undefined) updateData.notes = updates.notes;
+		if (updates.cost !== undefined) updateData.cost = updates.cost;
+		if (updates.parts_used !== undefined) updateData.parts_used = updates.parts_used;
+		if (updates.service_provider !== undefined) updateData.service_provider = updates.service_provider;
+		if (Object.keys(updateData).length === 0) {
+			return db.selectFrom('maintenance_logs').selectAll().where('id', '=', id).executeTakeFirst();
+		}
+		return db
+			.updateTable('maintenance_logs')
+			.set(updateData)
+			.where('id', '=', id)
+			.returningAll()
+			.executeTakeFirst();
+	},
+
+	appendNotes: async (
+		db: Kysely<Database>,
+		id: number,
+		additionalNotes: string
+	): Promise<MaintenanceLog | undefined> => {
+		const log = await db.selectFrom('maintenance_logs').selectAll().where('id', '=', id).executeTakeFirst();
+		if (!log) return undefined;
+		if (!additionalNotes.trim()) return log;
+		const merged = mergeMaintenanceLogNotesForAppend(log.notes, additionalNotes);
+		return maintenanceLogRepository.update(db, id, { notes: merged });
 	},
 
 	getAllForExport: async (

@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { Database, Task } from '$lib/types/db.js';
+import type { Database, Task, UpdateMaintenanceLogRequest } from '$lib/types/db.js';
 import {
 	equipmentRepository,
 	taskRepository,
@@ -88,8 +88,52 @@ async function executeTaskBatchAction(db: Kysely<Database>, action: ActionResult
 	return { tasks: created, count: created.length };
 }
 
+function sanitizeMaintenanceLogUpdates(
+	updates: Record<string, unknown>
+): UpdateMaintenanceLogRequest {
+	const out: UpdateMaintenanceLogRequest = {};
+	if (updates.notes !== undefined) {
+		out.notes = updates.notes == null ? undefined : String(updates.notes);
+	}
+	if (updates.cost !== undefined && updates.cost !== null) {
+		const c = Number(updates.cost);
+		if (!Number.isNaN(c)) out.cost = c;
+	}
+	if (updates.parts_used !== undefined) {
+		out.parts_used =
+			updates.parts_used == null ? undefined : String(updates.parts_used);
+	}
+	if (updates.service_provider !== undefined) {
+		out.service_provider =
+			updates.service_provider == null ? undefined : String(updates.service_provider);
+	}
+	return out;
+}
+
 async function executeMaintenanceLogAction(db: Kysely<Database>, action: ActionResult) {
-	if (action.type !== 'create' || !action.data) {
+	if (!action.data) {
+		throw new Error('Invalid maintenance log action');
+	}
+	if (action.type === 'update') {
+		const id = action.data.id;
+		const updates = action.data.updates as Record<string, unknown> | undefined;
+		if (id == null || updates == null || typeof updates !== 'object') {
+			throw new Error('Invalid maintenance log update payload');
+		}
+		const sanitized = sanitizeMaintenanceLogUpdates(updates);
+		if (Object.keys(sanitized).length === 0) {
+			throw new Error('No valid maintenance log fields to update');
+		}
+		if (sanitized.cost !== undefined && sanitized.cost < 0) {
+			throw new Error('Cost must be non-negative');
+		}
+		const result = await maintenanceLogRepository.update(db, Number(id), sanitized);
+		if (!result) {
+			throw new Error(`Maintenance log with ID ${id} not found`);
+		}
+		return result;
+	}
+	if (action.type !== 'create') {
 		throw new Error(`Unknown maintenance log action: ${action.type}`);
 	}
 	if (action.data.task_id) {

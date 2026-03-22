@@ -119,6 +119,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (result.actionsForConfirmation?.length) {
 			const action = result.actionsForConfirmation[0];
 			const actionId = uuidv4();
+
+			// Assistant messages with tool_calls must be followed by matching tool messages
+			// before the next user turn, or follow-up chat requests can fail validation.
+			const lastAssistantWithTools = [...newTurns]
+				.reverse()
+				.find((m) => m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0);
+			if (lastAssistantWithTools?.tool_calls) {
+				const pendingPayload = {
+					pending_user_confirmation: true as const,
+					action_id: actionId,
+					entity: action.entity,
+					action_type: action.type
+				};
+				for (const tc of lastAssistantWithTools.tool_calls) {
+					await sessionStore.appendTurn(
+						locals.db,
+						sessionId,
+						'tool',
+						JSON.stringify(pendingPayload),
+						undefined,
+						tc.id
+					);
+				}
+			}
+
 			const pendingTtlMs = action.entity === 'task_batch' ? 10 * 60 * 1000 : undefined;
 			await pendingActions.createPendingAction(
 				locals.db,

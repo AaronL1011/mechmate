@@ -14,6 +14,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = (await request.json()) as ConfirmRequest;
 		const { action_id, confirmed, updated_data } = body;
+		// user_feedback (if present on the request body) is handled on the client after success:
+		// MechAssistant sends a follow-up /api/agent/chat turn so Mech can respond in context.
 
 		if (!action_id) {
 			return json(

@@ -188,6 +188,27 @@ export interface CompleteTaskRequest {
 	service_provider?: string;
 }
 
+/** Allowed fields when updating an existing maintenance log (annotation-style only). */
+export interface UpdateMaintenanceLogRequest {
+	notes?: string;
+	cost?: number;
+	parts_used?: string;
+	service_provider?: string;
+}
+
+export interface MaintenanceLogsQueryFilter {
+	equipment_id?: number;
+	task_id?: number;
+	date_range?: { start_date?: string; end_date?: string };
+	/** Max rows to return (newest first by completed_date). */
+	limit?: number;
+}
+
+/** PUT body may include append_notes in addition to UpdateMaintenanceLogRequest fields. */
+export type PutMaintenanceLogRequest = UpdateMaintenanceLogRequest & {
+	append_notes?: string;
+};
+
 export interface UpdateEquipmentRequest {
 	name?: string;
 	equipment_type_id?: number;

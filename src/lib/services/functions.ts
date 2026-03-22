@@ -5,6 +5,7 @@ import {
 	equipmentRepository,
 	taskRepository,
 	maintenanceLogRepository,
+	mergeMaintenanceLogNotesForAppend,
 	equipmentTypeRepository,
 	taskTypeRepository,
 	globalSettingsRepository
@@ -13,7 +14,11 @@ import { runProactiveAgent } from '../agent/proactive.js';
 import { buildBootstrapTasksForEquipment } from '../agent/bootstrap-schedule-templates.js';
 import { enrichBootstrapTasksWithLlm } from '../agent/bootstrap-task-copy-enrichment.js';
 import { getAssistantToneContext } from '../agent/prompts.js';
-import type { GlobalSettingsValues } from '../types/db.js';
+import type {
+	GlobalSettingsValues,
+	MaintenanceLogsQueryFilter,
+	UpdateMaintenanceLogRequest
+} from '../types/db.js';
 
 export interface FunctionContext {
 	db: Kysely<Database>;
@@ -357,9 +362,61 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 						end_date: { type: 'string', description: 'End date in YYYY-MM-DD format' }
 					},
 					description: 'Date range to filter logs'
+				},
+				limit: {
+					type: 'number',
+					description:
+						'Maximum number of logs to return (newest first). Defaults to 100; capped at 500.'
 				}
 			},
 			required: []
+		}
+	},
+	{
+		name: 'update_maintenance_log',
+		description:
+			'Update an existing maintenance log (notes, cost, parts used, or service provider only). Does not change completion date, task, or equipment.',
+		parameters: {
+			type: 'object',
+			properties: {
+				maintenance_log_id: {
+					type: 'number',
+					description: 'ID of the maintenance log to update'
+				},
+				updates: {
+					type: 'object',
+					description: 'Fields to update (at least one required)',
+					properties: {
+						notes: { type: 'string', description: 'Notes (replaces existing notes)' },
+						cost: { type: 'number', description: 'Cost of the maintenance' },
+						parts_used: {
+							type: 'string',
+							description: 'JSON array string of parts used in the maintenance'
+						},
+						service_provider: { type: 'string', description: 'Who performed the maintenance' }
+					}
+				}
+			},
+			required: ['maintenance_log_id', 'updates']
+		}
+	},
+	{
+		name: 'append_maintenance_log_notes',
+		description:
+			'Append text to an existing maintenance log notes field with an automatic timestamp. Prefer this when the user wants to add commentary without replacing existing notes.',
+		parameters: {
+			type: 'object',
+			properties: {
+				maintenance_log_id: {
+					type: 'number',
+					description: 'ID of the maintenance log'
+				},
+				additional_notes: {
+					type: 'string',
+					description: 'Text to append to the log notes'
+				}
+			},
+			required: ['maintenance_log_id', 'additional_notes']
 		}
 	},
 	{
@@ -504,13 +561,20 @@ export class FunctionExecutor {
 
 				// Maintenance log functions
 				case 'get_maintenance_logs':
-					return await this.getMaintenanceLogs();
+					return await this.getMaintenanceLogs(args);
 				case 'generate_suggestions':
 					return await this.generateSuggestions();
 				case 'complete_task':
 					return await this.completeTask(args);
 				case 'create_maintenance_log':
 					return await this.createMaintenanceLog(args);
+				case 'update_maintenance_log':
+					return await this.updateMaintenanceLog(args.maintenance_log_id, args.updates);
+				case 'append_maintenance_log_notes':
+					return await this.appendMaintenanceLogNotes(
+						args.maintenance_log_id,
+						args.additional_notes
+					);
 
 				default:
 					throw new Error(`Unknown function: ${name}`);
@@ -741,13 +805,105 @@ export class FunctionExecutor {
 	}
 
 	// Maintenance log function implementations
-	private async getMaintenanceLogs(): Promise<ActionResult> {
-		const logs = await maintenanceLogRepository.getAll(this.context.db);
+	private async getMaintenanceLogs(args: Record<string, unknown> = {}): Promise<ActionResult> {
+		const equipmentId = args.equipment_id as number | undefined;
+		const taskId = args.task_id as number | undefined;
+		const dateRange = args.date_range as { start_date?: string; end_date?: string } | undefined;
+		const limitArg = args.limit as number | undefined;
+
+		let limit: number;
+		if (limitArg != null && !Number.isNaN(Number(limitArg)) && Number(limitArg) > 0) {
+			limit = Math.min(Number(limitArg), 500);
+		} else {
+			limit = 100;
+		}
+
+		const filter: MaintenanceLogsQueryFilter = {
+			...(equipmentId != null && !Number.isNaN(Number(equipmentId))
+				? { equipment_id: Number(equipmentId) }
+				: {}),
+			...(taskId != null && !Number.isNaN(Number(taskId)) ? { task_id: Number(taskId) } : {}),
+			...(dateRange?.start_date || dateRange?.end_date
+				? {
+						date_range: {
+							...(dateRange.start_date ? { start_date: dateRange.start_date } : {}),
+							...(dateRange.end_date ? { end_date: dateRange.end_date } : {})
+						}
+					}
+				: {}),
+			limit
+		};
+
+		const logs = await maintenanceLogRepository.listWithFilters(this.context.db, filter);
 		return {
 			type: 'query',
 			entity: 'maintenance_log',
 			result: logs,
 			requires_confirmation: false
+		};
+	}
+
+	private pickMaintenanceLogToolUpdates(raw: Record<string, unknown>): UpdateMaintenanceLogRequest {
+		const updates: UpdateMaintenanceLogRequest = {};
+		if (raw.notes !== undefined) updates.notes = raw.notes as string;
+		if (raw.cost !== undefined && raw.cost !== null) {
+			const c = Number(raw.cost);
+			if (!Number.isNaN(c)) updates.cost = c;
+		}
+		if (raw.parts_used !== undefined) updates.parts_used = raw.parts_used as string;
+		if (raw.service_provider !== undefined) updates.service_provider = raw.service_provider as string;
+		return updates;
+	}
+
+	private async updateMaintenanceLog(
+		maintenanceLogId: number,
+		updatesArg: Record<string, unknown>
+	): Promise<ActionResult> {
+		if (maintenanceLogId == null || Number.isNaN(Number(maintenanceLogId))) {
+			throw new Error('maintenance_log_id is required');
+		}
+		const log = await maintenanceLogRepository.getById(this.context.db, Number(maintenanceLogId));
+		if (!log) {
+			throw new Error(`Maintenance log with ID ${maintenanceLogId} not found`);
+		}
+		const updates = this.pickMaintenanceLogToolUpdates(updatesArg ?? {});
+		if (Object.keys(updates).length === 0) {
+			throw new Error('At least one field in updates is required');
+		}
+		if (updates.cost !== undefined && updates.cost < 0) {
+			throw new Error('Cost must be non-negative');
+		}
+		return {
+			type: 'update',
+			entity: 'maintenance_log',
+			data: { id: log.id, updates },
+			confirmation_message: `Update maintenance log #${log.id} (completed ${log.completed_date})?`,
+			requires_confirmation: true
+		};
+	}
+
+	private async appendMaintenanceLogNotes(
+		maintenanceLogId: number,
+		additionalNotes: string
+	): Promise<ActionResult> {
+		if (maintenanceLogId == null || Number.isNaN(Number(maintenanceLogId))) {
+			throw new Error('maintenance_log_id is required');
+		}
+		const trimmed = typeof additionalNotes === 'string' ? additionalNotes.trim() : '';
+		if (!trimmed) {
+			throw new Error('additional_notes must be non-empty');
+		}
+		const log = await maintenanceLogRepository.getById(this.context.db, Number(maintenanceLogId));
+		if (!log) {
+			throw new Error(`Maintenance log with ID ${maintenanceLogId} not found`);
+		}
+		const merged = mergeMaintenanceLogNotesForAppend(log.notes, trimmed);
+		return {
+			type: 'update',
+			entity: 'maintenance_log',
+			data: { id: log.id, updates: { notes: merged } },
+			confirmation_message: `Add notes to maintenance log #${log.id} (completed ${log.completed_date})?`,
+			requires_confirmation: true
 		};
 	}
 

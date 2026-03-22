@@ -333,21 +333,21 @@
 		onClose();
 	}
 
-	async function processInput() {
-		if (!input.trim()) return;
-
-		const userContent = input.trim();
-		pushMessage({ role: 'user', content: userContent });
-		input = '';
+	async function submitAgentPrompt(
+		promptText: string,
+		options: { pushUser: boolean; context?: string }
+	) {
+		if (options.pushUser) {
+			pushMessage({ role: 'user', content: promptText });
+		}
 		isProcessing = true;
-
 		try {
 			const response = await fetch('/api/agent/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					prompt: userContent,
-					context: usedVoiceThisTurn ? 'voice' : 'text',
+					prompt: promptText,
+					context: options.context ?? 'text',
 					...(sessionId ? { session_id: sessionId } : {})
 				})
 			});
@@ -376,6 +376,17 @@
 		} finally {
 			isProcessing = false;
 		}
+	}
+
+	async function processInput() {
+		if (!input.trim()) return;
+
+		const userContent = input.trim();
+		input = '';
+		await submitAgentPrompt(userContent, {
+			pushUser: true,
+			context: usedVoiceThisTurn ? 'voice' : 'text'
+		});
 	}
 
 	async function confirmAction(updatedData?: any, userFeedback?: string) {
@@ -407,11 +418,17 @@
 
 			pushMessage({ role: 'success', content: data.message || 'Action completed successfully.' });
 
+			const trimmedFeedback = userFeedback?.trim();
+			if (trimmedFeedback) {
+				const followUpPrompt = `I confirmed that change. Additional context: ${trimmedFeedback}`;
+				await submitAgentPrompt(followUpPrompt, { pushUser: true, context: 'text' });
+			}
+
 			if (onSuccess) onSuccess();
 
 			setTimeout(() => {
 				if (isOpen) handleClose();
-			}, 3000);
+			}, 1800);
 		} catch {
 			pendingAction = null;
 			actionId = null;
@@ -472,9 +489,8 @@
 			<header
 				class="flex flex-shrink-0 items-center gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800"
 			>
-				<img src="/robot.png" alt="Mech" class="h-7 w-7" />
 				<span class="flex-1 text-sm font-semibold tracking-wide text-gray-900 dark:text-white"
-					>Mech</span
+					>Ask Mech</span
 				>
 				{#if sessionId}
 					<span
@@ -533,7 +549,7 @@
 							{:else if msg.role === 'assistant'}
 								<!-- Assistant bubble: left-aligned -->
 								<div class="flex min-w-0 items-start gap-2.5">
-									<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0" />
+									<img src="/robot.png" alt="Mech" class="mt-0.5 h-8 w-8 flex-shrink-0" />
 									<div
 										class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 									>
@@ -548,20 +564,23 @@
 								<!-- Success bubble: left-aligned, green tint -->
 								<div class="flex items-start gap-2.5">
 									<div
-										class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+										class="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+										aria-hidden="true"
 									>
 										<svg
-											class="h-3.5 w-3.5 text-green-600 dark:text-green-400"
-											fill="none"
-											stroke="currentColor"
+											class="h-6 w-6 text-green-600 dark:text-green-400"
 											viewBox="0 0 24 24"
+											fill="none"
 										>
 											<path
+												class="mech-success-tick-path"
+												pathLength="1"
+												d="M5 13l4 4L19 7"
+												stroke="currentColor"
+												stroke-width="2.5"
 												stroke-linecap="round"
 												stroke-linejoin="round"
-												stroke-width="2.5"
-												d="M5 13l4 4L19 7"
-											></path>
+											/>
 										</svg>
 									</div>
 									<div
@@ -575,7 +594,7 @@
 							{:else if msg.role === 'error'}
 								<!-- Error bubble: left-aligned, amber tint -->
 								<div class="flex items-start gap-2.5">
-									<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0 opacity-60" />
+									<img src="/robot.png" alt="Mech" class="mt-0.5 h-8 w-8 flex-shrink-0 opacity-60" />
 									<div
 										class="max-w-[88%] rounded-2xl rounded-tl-sm border border-amber-100 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-900/40 dark:bg-amber-900/20"
 									>
@@ -590,7 +609,7 @@
 						<!-- Typing indicator -->
 						{#if isProcessing && !pendingAction}
 							<div class="flex items-start gap-2.5">
-								<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0 opacity-60" />
+								<img src="/robot.png" alt="Mech" class="mt-0.5 h-8 w-8 flex-shrink-0 opacity-60" />
 								<div
 									class="rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3.5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 								>
@@ -613,18 +632,20 @@
 						{/if}
 
 						<!-- Action confirmation rendered inline in thread -->
-						{#if pendingAction}
+						{#if pendingAction && actionId}
 							<div class="flex min-w-0 max-w-full items-start gap-2.5">
 								<img src="/robot.png" alt="Mech" class="mt-0.5 h-6 w-6 flex-shrink-0" />
 								<div
 									class="min-w-0 max-w-[88%] rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 								>
-									<ActionConfirmation
-										action={pendingAction}
-										onConfirm={confirmAction}
-										onCancel={cancelAction}
-										{isConfirming}
-									/>
+									{#key actionId}
+										<ActionConfirmation
+											action={pendingAction}
+											onConfirm={confirmAction}
+											onCancel={cancelAction}
+											{isConfirming}
+										/>
+									{/key}
 								</div>
 							</div>
 						{/if}
@@ -905,6 +926,18 @@
 		}
 	}
 
+	@keyframes mech-success-tick-draw {
+		to {
+			stroke-dashoffset: 0;
+		}
+	}
+
+	.mech-success-tick-path {
+		stroke-dasharray: 1;
+		stroke-dashoffset: 1;
+		animation: mech-success-tick-draw 1.8s ease-out forwards;
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.mech-voice-ring--listening {
 			animation: mech-voice-ring-soft-pulse 1.8s ease-in-out infinite;
@@ -913,6 +946,11 @@
 		.mech-voice-ring--paused {
 			animation: none;
 			opacity: 0.88;
+		}
+
+		.mech-success-tick-path {
+			animation: none;
+			stroke-dashoffset: 0;
 		}
 	}
 </style>
