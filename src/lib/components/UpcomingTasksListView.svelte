@@ -160,15 +160,10 @@
 										{taskTypeName}
 									{/if}
 								</p>
-								{#if task.description?.trim()}
-									<p class="mt-1 line-clamp-1 text-xs text-gray-400 dark:text-gray-500">
-										{task.description}
-									</p>
-								{/if}
 							</div>
 						</div>
 						<div
-							class="flex w-full shrink-0 justify-end border-t border-gray-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0 dark:border-gray-700"
+							class="flex w-full shrink-0 justify-end sm:w-auto dark:border-gray-700"
 						>
 							<button
 								type="button"

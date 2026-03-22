@@ -129,7 +129,7 @@
 		<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Mech suggests</h2>
 		<button
 			type="button"
-			class="inline-flex shrink-0 rounded p-1 text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200"
+			class="inline-flex shrink-0 rounded p-1 text-gray-500 transition-colors cursor-pointer hover:bg-gray-200/70 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
 			onclick={refreshSuggestions}
 			disabled={refreshing}
 			aria-label="Refresh suggestions"

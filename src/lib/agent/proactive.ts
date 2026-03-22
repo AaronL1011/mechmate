@@ -19,14 +19,6 @@ export {
 	type ProactiveSection
 } from './proactiveShared.js';
 
-const MAX_AGENT_ACTION_LABEL_LEN = 40;
-
-function truncateAgentActionLabel(text: string): string {
-	const t = text.trim();
-	if (t.length <= MAX_AGENT_ACTION_LABEL_LEN) return t;
-	return `${t.slice(0, MAX_AGENT_ACTION_LABEL_LEN - 1)}…`;
-}
-
 async function enforceProactiveActiveCap(db: Kysely<Database>): Promise<void> {
 	const rows = await db
 		.selectFrom('proactive_suggestions')
