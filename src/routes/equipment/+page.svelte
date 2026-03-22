@@ -143,7 +143,7 @@
 				</div>
 			</div>
 		{:else}
-			<ul class="m-0 flex list-none flex-col gap-4 p-0">
+			<ul class="m-0 flex list-none flex-col gap-4 p-0 pb-22">
 				{#each equipment as equipmentItem (equipmentItem.id)}
 					<EquipmentListItem
 						equipment={equipmentItem}
