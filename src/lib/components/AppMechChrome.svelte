@@ -113,10 +113,10 @@
 		box-shadow:
 			inset 0 1px 0 rgba(255, 255, 255, 0.55),
 			0 0 0 1px rgba(59, 130, 246, 0.07),
-			0 0 8px 0 rgba(37, 99, 235, 0.3),
-			0 0 14px 1px rgba(34, 211, 238, 0.1),
-			0 0 20px 2px rgba(147, 197, 253, 0.16);
-		animation: mech-fab-glow-light 5.5s ease-in-out infinite;
+			3px -1px 8px 0 rgba(37, 99, 235, 0.3),
+			-2px 1px 14px 1px rgba(34, 211, 238, 0.1),
+			1px 2px 20px 2px rgba(147, 197, 253, 0.16);
+		animation: mech-fab-glow-light 6.5s ease-in-out infinite;
 	}
 
 	.group:hover:not(:disabled) .mech-fab-surface {
@@ -129,10 +129,10 @@
 			box-shadow:
 				inset 0 1px 0 rgba(255, 255, 255, 0.1),
 				0 0 0 1px rgba(96, 165, 250, 0.12),
-				0 0 10px 1px rgba(59, 130, 246, 0.4),
-				0 0 18px 2px rgba(34, 211, 238, 0.11),
-				0 0 24px 2px rgba(96, 165, 250, 0.1);
-			animation: mech-fab-glow-dark 5.5s ease-in-out infinite;
+				2px -2px 10px 1px rgba(59, 130, 246, 0.4),
+				-2px 1px 18px 2px rgba(34, 211, 238, 0.11),
+				1px 2px 24px 2px rgba(96, 165, 250, 0.1);
+			animation: mech-fab-glow-dark 6.5s ease-in-out infinite;
 		}
 
 		.group:hover:not(:disabled) .mech-fab-surface {
@@ -173,17 +173,33 @@
 			box-shadow:
 				inset 0 1px 0 rgba(255, 255, 255, 0.55),
 				0 0 0 1px rgba(59, 130, 246, 0.07),
-				0 0 8px 0 rgba(37, 99, 235, 0.3),
-				0 0 14px 1px rgba(34, 211, 238, 0.1),
-				0 0 20px 2px rgba(147, 197, 253, 0.16);
+				3px -1px 8px 0 rgba(37, 99, 235, 0.3),
+				-2px 1px 14px 1px rgba(34, 211, 238, 0.1),
+				1px 2px 20px 2px rgba(147, 197, 253, 0.16);
+		}
+		25% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.58),
+				0 0 0 1px rgba(59, 130, 246, 0.09),
+				0 3px 10px 0 rgba(37, 99, 235, 0.32),
+				2px -2px 15px 1px rgba(34, 211, 238, 0.14),
+				-2px 0 21px 2px rgba(147, 197, 253, 0.18);
 		}
 		50% {
 			box-shadow:
-				inset 0 1px 0 rgba(255, 255, 255, 0.62),
-				0 0 0 1px rgba(34, 211, 238, 0.09),
-				0 0 11px 0 rgba(34, 211, 238, 0.22),
-				0 0 17px 2px rgba(59, 130, 246, 0.14),
-				0 0 24px 2px rgba(96, 165, 250, 0.2);
+				inset 0 1px 0 rgba(255, 255, 255, 0.68),
+				0 0 0 1px rgba(34, 211, 238, 0.16),
+				-3px 2px 15px 1px rgba(34, 211, 238, 0.4),
+				2px 1px 24px 3px rgba(59, 130, 246, 0.26),
+				1px -3px 34px 4px rgba(96, 165, 250, 0.34);
+		}
+		75% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.58),
+				0 0 0 1px rgba(59, 130, 246, 0.09),
+				1px -2px 10px 0 rgba(37, 99, 235, 0.32),
+				-3px 1px 15px 1px rgba(34, 211, 238, 0.14),
+				2px 2px 21px 2px rgba(147, 197, 253, 0.18);
 		}
 	}
 
@@ -193,23 +209,45 @@
 			box-shadow:
 				inset 0 1px 0 rgba(255, 255, 255, 0.1),
 				0 0 0 1px rgba(96, 165, 250, 0.12),
-				0 0 10px 1px rgba(59, 130, 246, 0.4),
-				0 0 18px 2px rgba(34, 211, 238, 0.11),
-				0 0 24px 2px rgba(96, 165, 250, 0.1);
+				2px -2px 10px 1px rgba(59, 130, 246, 0.4),
+				-2px 1px 18px 2px rgba(34, 211, 238, 0.11),
+				1px 2px 24px 2px rgba(96, 165, 250, 0.1);
+		}
+		25% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.12),
+				0 0 0 1px rgba(96, 165, 250, 0.14),
+				0 3px 12px 1px rgba(59, 130, 246, 0.42),
+				2px -2px 19px 2px rgba(34, 211, 238, 0.13),
+				-2px 0 25px 2px rgba(96, 165, 250, 0.12);
 		}
 		50% {
 			box-shadow:
-				inset 0 1px 0 rgba(255, 255, 255, 0.14),
-				0 0 0 1px rgba(34, 211, 238, 0.13),
-				0 0 12px 1px rgba(34, 211, 238, 0.28),
-				0 0 20px 2px rgba(147, 197, 253, 0.09),
-				0 0 28px 3px rgba(59, 130, 246, 0.24);
+				inset 0 1px 0 rgba(255, 255, 255, 0.2),
+				0 0 0 1px rgba(34, 211, 238, 0.24),
+				-3px 2px 16px 2px rgba(34, 211, 238, 0.48),
+				2px 1px 26px 4px rgba(147, 197, 253, 0.18),
+				1px -3px 36px 4px rgba(59, 130, 246, 0.4);
+		}
+		75% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.12),
+				0 0 0 1px rgba(96, 165, 250, 0.14),
+				1px -2px 12px 1px rgba(59, 130, 246, 0.42),
+				-3px 1px 19px 2px rgba(34, 211, 238, 0.13),
+				2px 2px 25px 2px rgba(96, 165, 250, 0.12);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.mech-fab-surface {
 			animation: none;
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.55),
+				0 0 0 1px rgba(59, 130, 246, 0.07),
+				0 0 8px 0 rgba(37, 99, 235, 0.3),
+				0 0 14px 1px rgba(34, 211, 238, 0.1),
+				0 0 20px 2px rgba(147, 197, 253, 0.16);
 		}
 
 		@media (prefers-color-scheme: dark) {
