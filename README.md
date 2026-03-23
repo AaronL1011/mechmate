@@ -1,157 +1,119 @@
-# Mechmate Self-Hosted
+# Mechmate
 
-A personal maintenance management system for tracking equipment, scheduling maintenance tasks, and managing repair history.
+Self-hosted maintenance for equipment and recurring tasks, built around **Mech**—an agent that talks to your real data so you can add equipment, schedule work, and **log service in plain language** instead of living in forms. The dashboard, lists, and history views are there when you want precision; the assistant is how most day-to-day management stays lightweight.
+
+Configure an **OpenAI-compatible API** (cloud or local) to unlock the assistant, proactive dashboard nudges, and voice input where the browser allows it.
 
 ![mechmate home dashboard](./screenshot.png)
 
 ## Features
 
-- **Equipment Management** - Track vehicles, appliances, tools, devices, and mechanical equipment
-- **Maintenance Scheduling** - Time-based or usage-based maintenance intervals
-- **AI Assistant** - Natural language equipment and task management
-- **Maintenance History** - Complete audit trail with cost tracking
-- **Push Notifications** - Maintenance reminders (optional)
-- **Automatic Backups** - Scheduled database backups with retention
-- **Beautiful UI** - Modern, responsive interface built with SvelteKit and Tailwind CSS
+- **Agentic workflow (Mech)** — **Ask Mech** is always one tap away: a tool-using agent with session memory and **confirmed actions** so create/update equipment, tasks, and maintenance records stay safe and traceable. **Voice input** works when the app runs over HTTPS (or localhost). On the dashboard, **proactive suggestions** surface next steps from the same stack—so the UI and the chat feel like one system.
+- **Dashboard** — Stats, upcoming work in **list** or **calendar** view, and due-soon callouts alongside those suggestions.
+- **Equipment** — Types, serials, locations, usage; **service history** with logs, costs, attachments, CSV export, and print-style **PDF reports**; **resources** for manuals and docs (upload with text extraction) that the assistant can reason over in context.
+- **Tasks** — Full task list with due buckets (overdue, today, week, later), filters, editing, completion flow, and bulk actions—complementing natural-language task work in Mech.
+- **Labels & QR** — Printable equipment labels and QR codes that deep-link into the app (set `PUBLIC_APP_URL` when behind a reverse proxy).
+- **Settings** — Instance name, upcoming-task window, metric/imperial, assistant tone, and notification thresholds.
+- **Operations** — Scheduled SQLite backups with retention, optional **Web Push** (VAPID), rate limiting, `/health` checks, and an optional `/api/system/metrics` endpoint.
 
-## Tech Stack
+Without an API key the app still runs, but **Mech and LLM-driven suggestions are off**—you will rely on manual screens for most changes.
 
-- **Frontend**: SvelteKit 5 with TypeScript
-- **Styling**: Tailwind CSS 4
-- **Database**: SQLite with better-sqlite3 and Kysely query builder
-- **AI/LLM**: OpenAI API integration with configurable models
-- **Notifications**: Web Push API with VAPID
-- **Deployment**: Docker with production-ready security
+There is **no built-in user authentication**; run on a trusted network or protect with your reverse proxy or VPN.
 
-## Quick Start
+## Tech stack
 
-**Prerequisites:** Docker and Docker Compose installed
+| Area        | Choice |
+|------------|--------|
+| App        | SvelteKit 2, Svelte 5, TypeScript, Vite 6 |
+| UI         | Tailwind CSS 4 |
+| Production | `@sveltejs/adapter-node` |
+| Data       | SQLite (`better-sqlite3`), Kysely |
+| Validation | Zod |
+| AI / Mech  | OpenAI-compatible HTTP API (tools + chat; base URL, model, timeouts configurable) |
+| Documents  | PDF and Office parsing for resource extraction (`pdf-parse`, `mammoth`) |
+| Push       | `web-push` + VAPID |
+
+## Quick start (Docker)
+
+**Prerequisites:** Docker with Compose (`docker compose` or `docker-compose`).
 
 ```bash
-# Clone and deploy
-git clone https://github.com/yourusername/mechmate.git
+git clone <repository-url>
 cd mechmate
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-Access at `http://localhost:3000`
+The script copies `.env.example` → `.env` if needed, then builds and starts the stack. Open `http://localhost:3000` (or the host/port shown when it finishes). Add `OPENAI_API_KEY` (and model/URL if not using defaults) so **Mech and proactive suggestions** are available.
+
+Manual equivalent:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Data lives in the `mechmate_data` volume under `/app/data` in the container (see `docker-compose.yml`).
 
 ## Configuration
 
-### Basic Setup
+**Authoritative reference:** [.env.example](.env.example).
 
-Edit `.env` file to customize:
+| Topic | Notes |
+|-------|--------|
+| **Core** | `PORT`, `HOST`, `INSTANCE_NAME`, `DATABASE_DIR`, backup dirs and `AUTO_BACKUP_*` |
+| **Mech / LLM** | `OPENAI_API_KEY` enables the assistant and dashboard LLM features. Also set `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_MAX_TOKENS`, or `LLM_TIMEOUT_MS` when not using OpenAI defaults. OpenAI, OpenRouter, Ollama/LM Studio, and other compatible hosts work. |
+| **Push** | Generate keys: `npx web-push generate-vapid-keys` → `VAPID_*` in `.env` |
+| **Public URL** | `PUBLIC_APP_URL` so QR codes and absolute links match your real origin behind TLS/proxy |
+| **Security** | `RATE_LIMIT_ENABLED`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS` |
+| **Metrics** | `METRICS_ENABLED=true` to allow `GET /api/system/metrics` |
+| **Health** | `HEALTH_CHECK_ENABLED` (when off, `/health` responds as disabled) |
+
+Restart the container after changing `.env`:
 
 ```bash
-# Application
-PORT=3000
-INSTANCE_NAME="My Mechmate Instance"
-
-# Features (Optional)
-OPENAI_API_KEY=your_openai_key_here
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
-VAPID_SUBJECT=mailto:admin@yourdomain.com
-
-# Security
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_MAX_REQUESTS=100
+docker compose restart mechmate
 ```
 
-### AI Assistant Setup
-
-Mechmate supports any OpenAI-compatible API endpoint:
-
-**OpenAI Direct:**
+## Day-to-day operations
 
 ```bash
-OPENAI_API_KEY=your_openai_key_here
-OPENAI_MODEL=gpt-4o-mini
+docker compose logs -f mechmate
+docker compose restart mechmate
+docker compose down
+docker compose pull && docker compose up -d
 ```
 
-**OpenRouter (Multiple Providers):**
+**Health (JSON):** `curl http://localhost:3000/health`
+
+**Metrics** (only if `METRICS_ENABLED=true`): `curl http://localhost:3000/api/system/metrics`
+
+**Manual backup:**
 
 ```bash
-OPENAI_API_KEY=your_openrouter_key_here
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_MODEL=openai/gpt-4o-mini
-```
-
-**Local Models (Ollama/LM Studio):**
-
-```bash
-OPENAI_BASE_URL=http://localhost:11434/v1
-OPENAI_MODEL=llama3.1:8b
-```
-
-### Push Notifications Setup
-
-1. Generate VAPID keys: `npx web-push generate-vapid-keys`
-2. Add keys to `.env`
-3. Restart: `docker-compose restart mechmate`
-
-## Management
-
-### Daily Operations
-
-```bash
-# View logs
-docker-compose logs -f mechmate
-
-# Restart service
-docker-compose restart mechmate
-
-# Stop service
-docker-compose down
-
-# Update to latest version
-docker-compose pull && docker-compose up -d
-```
-
-### Monitoring
-
-```bash
-# Health check
-curl http://localhost:3000/health
-
-# System metrics
-curl http://localhost:3000/api/system/metrics
-
-# Create manual backup
 curl -X POST http://localhost:3000/api/system/backup \
   -H "Content-Type: application/json" \
-  -d '{"type": "manual"}'
+  -d '{"type":"manual"}'
 ```
 
-### Data Management
-
-Your data is stored in Docker volumes:
+**Data volume** (typical volume name `mechmate_mechmate_data`; confirm with `docker volume ls`):
 
 ```bash
-# List volumes
-docker volume ls | grep mechmate
-
-# Backup data volume
-docker run --rm -v mechmate_mechmate_data:/data -v $(pwd):/backup ubuntu \
-  tar czf /backup/mechmate-data-backup.tar.gz /data
-
-# Restore data volume
-docker run --rm -v mechmate_mechmate_data:/data -v $(pwd):/backup ubuntu \
-  tar xzf /backup/mechmate-data-backup.tar.gz -C /
+docker run --rm -v mechmate_mechmate_data:/data -v "$(pwd)":/backup ubuntu \
+  tar czf /backup/mechmate-data-backup.tar.gz -C / data
 ```
 
-## Reverse Proxy Setup
+## Reverse proxy
 
-### Nginx
+Terminate TLS in front of the Node server and forward headers so absolute links and optional client features behave correctly. Example (Nginx):
 
 ```nginx
 server {
-    listen 80;
-    server_name mechmate.yourdomain.com;
+    listen 443 ssl;
+    server_name maintenance.example.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -160,77 +122,28 @@ server {
 }
 ```
 
-### Traefik
+Set `PUBLIC_APP_URL=https://maintenance.example.com` to match. For Traefik, attach router labels to the `mechmate` service and point the backend to port `3000` (see commented snippet in `docker-compose.yml`).
 
-Add labels to `docker-compose.yml`:
-
-```yaml
-services:
-  mechmate:
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.mechmate.rule=Host(`mechmate.yourdomain.com`)'
-      - 'traefik.http.routers.mechmate.entrypoints=websecure'
-      - 'traefik.http.routers.mechmate.tls.certresolver=letsencrypt'
-```
-
-## Development
+## Local development
 
 ```bash
 npm install
-npm run dev -- --host
+npm run dev
 ```
 
-Available at `http://localhost:5173`
+Vite is configured with **HTTPS** via `@vitejs/plugin-basic-ssl` so **microphone / voice** can be tested; use the `https://` URL printed in the terminal (often `https://localhost:5173`).
 
 ## Troubleshooting
 
-### Common Issues
-
-**Port already in use:**
-
-```bash
-# Change port in .env
-PORT=3001
-
-# Or find what's using port 3000
-sudo netstat -tulpn | grep 3000
-```
-
-**Database issues:**
-
-```bash
-# Check database integrity
-docker-compose exec mechmate sqlite3 /app/data/mechmate.db "PRAGMA integrity_check;"
-
-# Restore from backup
-curl -X POST http://localhost:3000/api/system/backup/restore \
-  -H "Content-Type: application/json" \
-  -d '{"filename": "your-backup-file.db"}'
-```
-
-### Debug Mode
-
-```bash
-# Add to .env
-LOG_LEVEL=debug
-ENABLE_DEBUG_LOGS=true
-
-# Restart and check logs
-docker-compose restart mechmate
-docker-compose logs -f mechmate
-```
+- **Port in use** — Change `PORT` in `.env` or free the port (`ss -tlnp` / `netstat`).
+- **SQLite** — From a shell in the container: `sqlite3 /app/data/mechmate.db "PRAGMA integrity_check;"` (adjust path if `DATABASE_DIR` differs).
+- **Restore backup** — `POST /api/system/backup/restore` with JSON `{"filename":"…"}` as documented in your deployment.
+- **Verbose logs** — Set `LOG_LEVEL=debug` and `ENABLE_DEBUG_LOGS=true` in `.env`, then restart and inspect container logs.
 
 ## License
 
-GPL-3.0 License - see LICENSE file for details.
-
-## Support
-
-- **Documentation**: `DEPLOYMENT.md` for detailed setup
-- **Issues**: GitHub issue tracker
-- **Health Check**: `http://localhost:3000/health`
+GPL-3.0 — see [LICENSE](LICENSE).
 
 ---
 
-**Note**: This is a self-hosted application designed for personal use. Ensure proper security measures for production deployments.
+Mechmate is intended for **self-hosted, personal or small-team** use. Harden network access and backups for anything production-facing.
