@@ -70,6 +70,33 @@
 
 	const voiceSupported = hasSpeechRecognition;
 
+	type ConversationStarter = { label: string; prompt: string };
+
+	const CONVERSATION_STARTERS: ConversationStarter[] = [
+		{
+			label: 'What should I tackle first?',
+			prompt:
+				'What should I prioritize this week—overdue items, upcoming due dates, and anything I might be missing?'
+		},
+		{
+			label: 'Are there any parts I need to order?',
+			prompt:
+				'What parts do I need to order for any upcoming maintenance tasks?'
+		},
+		{
+			label: 'Log a completed task for my equipment',
+			prompt:
+				'Log a completed task for my equipment, request any details I need to provide.'
+		}
+	];
+
+	const showConversationStarters = $derived(
+		messages.length === 0 &&
+			!pendingAction &&
+			!isProcessing &&
+			(voiceState === 'idle' || voiceState === 'unsupported')
+	);
+
 	const markdownRenderer = new Renderer();
 	markdownRenderer.table = function (token) {
 		const html = Renderer.prototype.table.call(this, token);
@@ -395,6 +422,10 @@
 		});
 	}
 
+	async function handleConversationStarter(prompt: string) {
+		await submitAgentPrompt(prompt, { pushUser: true, context: 'text' });
+	}
+
 	async function confirmAction(updatedData?: any, userFeedback?: string) {
 		if (!actionId) return;
 
@@ -525,17 +556,38 @@
 			</header>
 
 			<!-- Thread -->
-			<div bind:this={threadEl} class="scrollbar-hidden flex-1 overflow-y-auto px-5 py-5">
+			<div bind:this={threadEl} class="scrollbar-hidden flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
 				{#if messages.length === 0 && !pendingAction && !isProcessing}
 					<!-- Empty state -->
-					<div class="flex h-full flex-col items-center justify-center gap-3 py-10 text-center">
-						<img src="/robot.png" alt="" class="h-12 w-12 opacity-40" />
-						<p class="text-sm font-medium text-gray-400 dark:text-gray-500">
-							Ask Mech anything about your equipment.
-						</p>
-						<p class="text-xs text-gray-300 dark:text-gray-600">
-							Create records · schedule tasks · log jobs · ask questions
-						</p>
+					<div class="flex h-full min-h-0 flex-col">
+						<div
+							class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center"
+						>
+							<img src="/robot.png" alt="" class="h-12 w-12 opacity-40" />
+							<p class="text-sm font-medium text-gray-400 dark:text-gray-500">
+								Ask Mech anything about your equipment.
+							</p>
+							<p class="text-xs text-gray-300 dark:text-gray-600">
+								Create records · schedule tasks · log jobs · ask questions
+							</p>
+						</div>
+						{#if showConversationStarters}
+							<div
+								class="mt-auto flex w-full flex-shrink-0 flex-col items-end gap-4 pt-6"
+								aria-label="Conversation starters"
+							>
+								{#each CONVERSATION_STARTERS as starter (starter.label)}
+									<button
+										type="button"
+										disabled={isProcessing}
+										onclick={() => handleConversationStarter(starter.prompt)}
+										class="max-w-[min(100%,24rem)] rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm font-medium text-gray-800 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50/40 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
+									>
+										{starter.label}
+									</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<div class="flex flex-col gap-4">
