@@ -3,6 +3,7 @@
 	import type { Equipment, EquipmentType } from '$lib/types/db.js';
 	import EditEquipmentModal from '$lib/components/EditEquipmentModal.svelte';
 	import DeleteConfirmationModal from '$lib/components/DeleteConfirmationModal.svelte';
+	import EquipmentListItem from '$lib/components/EquipmentListItem.svelte';
 
 	let equipment: Equipment[] = [];
 	let equipmentTypes: EquipmentType[] = [];
@@ -79,28 +80,6 @@
 		}
 	}
 
-	function formatDate(dateString: string | null): string {
-		if (!dateString) return 'Not specified';
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	}
-
-	function parseTags(tags: string | null): string[] {
-		if (!tags) return [];
-		try {
-			return JSON.parse(tags);
-		} catch {
-			return [];
-		}
-	}
-
-	function getEquipmentTypeName(equipmentTypeId: number): string {
-		return equipmentTypes.find((e) => e.id === equipmentTypeId)?.name || 'Unknown';
-	}
-
 	onMount(() => {
 		loadEquipment();
 	});
@@ -110,37 +89,14 @@
 	<title>Equipment Management - Mechmate</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 dark:bg-gray-900">
-	<!-- Header -->
-	<header class="mx-auto mb-8 max-w-7xl">
-		<div class="mb-4 flex items-center gap-4">
-			<a
-				href="/"
-				class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-				aria-label="return to dashboard"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="24"
-					height="24"
-					fill="currentColor"
-					viewBox="0 0 256 256"
-				>
-					<path
-						d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"
-					></path>
-				</svg>
-			</a>
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900 lg:text-3xl dark:text-white">
-					Equipment Management
-				</h1>
-				<p class="text-gray-600 dark:text-gray-300">Track inventory and export service history</p>
-			</div>
-		</div>
-	</header>
+<header class="mx-auto my-8 pl-4 max-w-7xl">
+	<h1 class="text-xl font-bold text-gray-900 lg:text-3xl dark:text-white">Equipment Management</h1>
+	<p class="mt-1 text-sm text-gray-600 lg:text-base dark:text-gray-300">
+		Track inventory and export service history
+	</p>
+</header>
 
-	<main class="mx-auto max-w-7xl">
+<main class="mx-auto max-w-7xl">
 		{#if loading}
 			<div class="flex items-center justify-center py-12">
 				<div
@@ -187,98 +143,18 @@
 				</div>
 			</div>
 		{:else}
-			<div
-				class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800 dark:shadow-gray-900/20"
-			>
-				<ul class="divide-y divide-gray-200 dark:divide-gray-700">
-					{#each equipment as equipmentItem (equipmentItem.id)}
-						<li class="px-6 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700">
-							<div class="flex flex-wrap items-center justify-between gap-y-4">
-								<div class="flex min-w-[400px] flex-1 items-center">
-									<div class="ml-4 flex-1">
-										<div class="flex items-center justify-between">
-											<div>
-												<h3 class="text-lg font-medium text-gray-900 dark:text-white">
-													{equipmentItem.name}
-												</h3>
-												<div
-													class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300"
-												>
-													<span class="capitalize"
-														>{getEquipmentTypeName(equipmentItem.equipment_type_id)}</span
-													>
-													{#if equipmentItem.make || equipmentItem.model}
-														<span>•</span>
-														<span>{equipmentItem.make} {equipmentItem.model}</span>
-													{/if}
-													{#if equipmentItem.year}
-														<span>•</span>
-														<span>{equipmentItem.year}</span>
-													{/if}
-												</div>
-												<div
-													class="mt-1 flex items-center space-x-4 text-xs text-gray-500 lg:text-sm dark:text-gray-400"
-												>
-													<span
-														>Current usage: {equipmentItem.current_usage_value}
-														{equipmentItem.usage_unit}</span
-													>
-													{#if equipmentItem.purchase_date}
-														<span>•</span>
-														<span>Purchased: {formatDate(equipmentItem.purchase_date)}</span>
-													{/if}
-												</div>
-												{#if equipmentItem.serial_number}
-													<p class="mt-1 text-xs text-gray-500 lg:text-sm dark:text-gray-400">
-														Serial: {equipmentItem.serial_number}
-													</p>
-												{/if}
-												{#if equipmentItem.tags}
-													{@const tags = parseTags(equipmentItem.tags)}
-													{#if tags.length > 0}
-														<div class="mt-2 flex flex-wrap gap-1">
-															{#each tags as tag (tag)}
-																<span
-																	class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-																>
-																	{tag}
-																</span>
-															{/each}
-														</div>
-													{/if}
-												{/if}
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="ml-auto flex items-center space-x-2">
-									<a
-										href="/equipment/{equipmentItem.id}/history"
-										class="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-									>
-										View History
-									</a>
-									<button
-										class="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-										on:click={() => openEditModal(equipmentItem)}
-									>
-										Edit
-									</button>
-									<button
-										class="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-										on:click={() => openDeleteModal(equipmentItem)}
-									>
-										Delete
-									</button>
-								</div>
-							</div>
-						</li>
-					{/each}
-				</ul>
-			</div>
+			<ul class="m-0 flex list-none flex-col gap-4 p-0 pb-22">
+				{#each equipment as equipmentItem (equipmentItem.id)}
+					<EquipmentListItem
+						equipment={equipmentItem}
+						{equipmentTypes}
+						onEdit={openEditModal}
+						onDelete={openDeleteModal}
+					/>
+				{/each}
+			</ul>
 		{/if}
-	</main>
-</div>
+</main>
 
 <EditEquipmentModal
 	isOpen={showEditModal}

@@ -1,12 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { equipmentRepository } from '$lib/repositories.js';
+import { equipmentRepository, getTotalCostByEquipmentIds } from '$lib/repositories.js';
 import type { CreateEquipmentRequest } from '$lib/types/db.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
 		const equipment = await equipmentRepository.getAll(locals.db);
-		return json(equipment);
+		const ids = equipment.map((e) => e.id);
+		const [costMap, nextDueMap] = await Promise.all([
+			getTotalCostByEquipmentIds(locals.db, ids),
+			equipmentRepository.getNextDueSummaryForEquipmentIds(locals.db, ids)
+		]);
+		const withCostAndNext = equipment.map((e) => ({
+			...e,
+			total_cost: costMap.get(e.id) ?? 0,
+			next_due_summary: nextDueMap.get(e.id) ?? null
+		}));
+		return json(withCostAndNext);
 	} catch (error) {
 		console.error('Error fetching equipment:', error);
 		return json({ error: 'Failed to fetch equipment' }, { status: 500 });

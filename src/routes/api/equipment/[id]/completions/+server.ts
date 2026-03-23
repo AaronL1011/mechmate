@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { maintenanceLogRepository } from '$lib/repositories.js';
+import { normalizePartsUsed } from '$lib/utils/parts.js';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -13,11 +14,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Fetch maintenance logs with task titles for the equipment
 		const completions = await maintenanceLogRepository.getByEquipmentId(locals.db, equipmentId);
 
-		// Parse parts_used JSON strings to arrays
-		const parsedCompletions = completions.map((completion: any) => ({
-			...completion,
-			parts_used: completion.parts_used ? JSON.parse(completion.parts_used) : undefined
-		}));
+		const parsedCompletions = completions.map((completion: { parts_used?: string | null; [k: string]: unknown }) => {
+			const raw = completion.parts_used;
+			const parts =
+				raw != null && String(raw).length > 0 ? normalizePartsUsed(raw) : [];
+			return {
+				...completion,
+				parts_used: parts.length > 0 ? parts : undefined
+			};
+		});
 
 		return json(parsedCompletions);
 	} catch (error) {

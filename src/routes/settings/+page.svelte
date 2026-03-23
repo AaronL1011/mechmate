@@ -354,12 +354,13 @@
 	}
 
 	// Utility functions
-	function urlBase64ToUint8Array(base64String: string): Uint8Array {
+	function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 		const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
 		const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
 
 		const rawData = window.atob(base64);
-		const outputArray = new Uint8Array(rawData.length);
+		const buffer = new ArrayBuffer(rawData.length);
+		const outputArray = new Uint8Array(buffer);
 
 		for (let i = 0; i < rawData.length; ++i) {
 			outputArray[i] = rawData.charCodeAt(i);
@@ -446,35 +447,14 @@
 	<title>Settings - Mechmate</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 dark:bg-gray-900">
-	<!-- Header -->
-	<header class="mx-auto mb-8 max-w-4xl">
-		<div class="mb-4 flex items-center gap-4">
-			<a
-				href="/"
-				class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-				aria-label="return to dashboard"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="24"
-					height="24"
-					fill="currentColor"
-					viewBox="0 0 256 256"
-				>
-					<path
-						d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"
-					></path>
-				</svg>
-			</a>
-			<div>
-				<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-				<p class="text-gray-600 dark:text-gray-300">Configure your Mechmate preferences</p>
-			</div>
-		</div>
-	</header>
+<header class="mx-auto my-8 pl-4 max-w-4xl">
+	<h1 class="text-xl font-bold text-gray-900 sm:text-2xl dark:text-white">Settings</h1>
+	<p class="mt-1 text-sm text-gray-600 sm:text-base dark:text-gray-300">
+		Configure your Mechmate preferences
+	</p>
+</header>
 
-	<main class="mx-auto max-w-4xl">
+<main class="mx-auto max-w-4xl">
 		{#if appLoading && !settings}
 			<div class="flex items-center justify-center py-12">
 				<div
@@ -921,5 +901,4 @@
 				{/if}
 			</div>
 		{/if}
-	</main>
-</div>
+</main>

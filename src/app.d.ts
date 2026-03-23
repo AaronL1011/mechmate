@@ -15,4 +15,15 @@ declare global {
 	}
 }
 
+declare module '$env/static/private' {
+	export const OPENAI_API_KEY: string;
+	export const OPENAI_BASE_URL: string;
+	export const OPENAI_MODEL: string;
+	export const OPENAI_TEMPERATURE: string;
+	export const OPENAI_MAX_TOKENS: string;
+	export const VAPID_PUBLIC_KEY: string;
+	export const VAPID_PRIVATE_KEY: string;
+	export const VAPID_SUBJECT: string;
+}
+
 export {};

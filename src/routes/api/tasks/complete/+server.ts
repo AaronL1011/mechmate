@@ -6,6 +6,10 @@ import {
 	equipmentRepository
 } from '$lib/repositories.js';
 import type { CompleteTaskRequest } from '$lib/types/db.js';
+import {
+	preserveLaterNextDueSchedule,
+	preserveMoreRecentLastCompleted
+} from '$lib/utils/preserveLaterNextDue.js';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -32,6 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const maintenanceLog = await maintenanceLogRepository.create(locals.db, {
 			task_id: body.task_id,
 			equipment_id: task.equipment_id,
+			user_id: task.user_id,
 			completed_date: body.completed_date,
 			completed_usage_value: body.completed_usage_value,
 			notes: body.notes,
@@ -40,11 +45,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			service_provider: body.service_provider
 		});
 
+		const { lastCompletedDate, lastCompletedUsage } = preserveMoreRecentLastCompleted(
+			task,
+			body.completed_date,
+			body.completed_usage_value
+		);
+
 		// Update task with completion info
 		const updatedTask = await taskRepository.update(locals.db, body.task_id, {
 			status: 'completed',
-			last_completed_date: body.completed_date,
-			last_completed_usage_value: body.completed_usage_value
+			last_completed_date: lastCompletedDate,
+			last_completed_usage_value: lastCompletedUsage
 		});
 
 		// Calculate next due date/usage
@@ -53,16 +64,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (task.time_interval_days) {
 			// Time-based scheduling
-			const completedDate = new Date(body.completed_date);
+			const completedDate = new Date(lastCompletedDate);
 			const nextDate = new Date(completedDate);
 			nextDate.setDate(nextDate.getDate() + task.time_interval_days);
 			nextDueDate = nextDate.toISOString().split('T')[0];
 		}
 
-		if (task.usage_interval && body.completed_usage_value) {
+		if (task.usage_interval && lastCompletedUsage !== undefined) {
 			// Usage-based scheduling
-			nextDueUsageValue = body.completed_usage_value + task.usage_interval;
+			nextDueUsageValue = lastCompletedUsage + task.usage_interval;
 		}
+
+		({ nextDueDate, nextDueUsageValue } = preserveLaterNextDueSchedule(
+			task,
+			nextDueDate,
+			nextDueUsageValue
+		));
 
 		// Update task with next due information
 		if (nextDueDate || nextDueUsageValue) {

@@ -3,11 +3,24 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../types/db.js';
 import {
 	equipmentRepository,
+	equipmentResourceRepository,
 	taskRepository,
 	maintenanceLogRepository,
+	mergeMaintenanceLogNotesForAppend,
 	equipmentTypeRepository,
-	taskTypeRepository
+	taskTypeRepository,
+	globalSettingsRepository
 } from '../repositories.js';
+import { toEquipmentResourceClient } from '../equipment-resource-serialize.js';
+import { runProactiveAgent } from '../agent/proactive.js';
+import { buildBootstrapTasksForEquipment } from '../agent/bootstrap-schedule-templates.js';
+import { enrichBootstrapTasksWithLlm } from '../agent/bootstrap-task-copy-enrichment.js';
+import { getAssistantToneContext } from '../agent/prompts.js';
+import type {
+	GlobalSettingsValues,
+	MaintenanceLogsQueryFilter,
+	UpdateMaintenanceLogRequest
+} from '../types/db.js';
 
 export interface FunctionContext {
 	db: Kysely<Database>;
@@ -15,7 +28,7 @@ export interface FunctionContext {
 
 export interface ActionResult {
 	type: 'create' | 'update' | 'delete' | 'query';
-	entity: 'equipment' | 'task' | 'maintenance_log';
+	entity: 'equipment' | 'task' | 'task_batch' | 'maintenance_log';
 	data?: any;
 	result?: any;
 	error?: string;
@@ -154,6 +167,49 @@ export const equipmentFunctions: LLMFunction[] = [
 				}
 			},
 			required: ['equipment_id']
+		}
+	},
+	{
+		name: 'list_equipment_resources',
+		description:
+			'List uploaded documents (manuals, invoices, etc.) for one equipment item, including short text previews when extraction succeeded.',
+		parameters: {
+			type: 'object',
+			properties: {
+				equipment_id: {
+					type: 'number',
+					description: 'Equipment ID'
+				}
+			},
+			required: ['equipment_id']
+		}
+	},
+	{
+		name: 'get_equipment_resource_excerpt',
+		description:
+			'Read a bounded excerpt of extracted plain text from one equipment resource (by resource id). Use after list_equipment_resources to ground answers in manuals. If extraction failed or is pending, the result explains why.',
+		parameters: {
+			type: 'object',
+			properties: {
+				resource_id: {
+					type: 'number',
+					description: 'ID of the resource row from list_equipment_resources'
+				},
+				equipment_id: {
+					type: 'number',
+					description:
+						'Optional: verify the resource belongs to this equipment (recommended when known)'
+				},
+				start_char: {
+					type: 'number',
+					description: 'Character offset into extracted text (default 0)'
+				},
+				max_chars: {
+					type: 'number',
+					description: 'Maximum characters to return (default 8000, hard cap 16000)'
+				}
+			},
+			required: ['resource_id']
 		}
 	}
 ];
@@ -310,6 +366,21 @@ export const taskFunctions: LLMFunction[] = [
 			},
 			required: ['task_id']
 		}
+	},
+	{
+		name: 'propose_bootstrap_service_schedule',
+		description:
+			'Propose a starter set of maintenance tasks for one equipment item based on its equipment type. Skips task types already on that equipment and types missing from the database. The user must confirm in the UI before tasks are created. Use after identifying equipment_id (e.g. via get_equipment_list or search_equipment).',
+		parameters: {
+			type: 'object',
+			properties: {
+				equipment_id: {
+					type: 'number',
+					description: 'ID of the equipment to bootstrap tasks for'
+				}
+			},
+			required: ['equipment_id']
+		}
 	}
 ];
 
@@ -336,9 +407,61 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 						end_date: { type: 'string', description: 'End date in YYYY-MM-DD format' }
 					},
 					description: 'Date range to filter logs'
+				},
+				limit: {
+					type: 'number',
+					description:
+						'Maximum number of logs to return (newest first). Defaults to 100; capped at 500.'
 				}
 			},
 			required: []
+		}
+	},
+	{
+		name: 'update_maintenance_log',
+		description:
+			'Update an existing maintenance log (notes, cost, parts used, or service provider only). Does not change completion date, task, or equipment.',
+		parameters: {
+			type: 'object',
+			properties: {
+				maintenance_log_id: {
+					type: 'number',
+					description: 'ID of the maintenance log to update'
+				},
+				updates: {
+					type: 'object',
+					description: 'Fields to update (at least one required)',
+					properties: {
+						notes: { type: 'string', description: 'Notes (replaces existing notes)' },
+						cost: { type: 'number', description: 'Cost of the maintenance' },
+						parts_used: {
+							type: 'string',
+							description: 'JSON array string of parts used in the maintenance'
+						},
+						service_provider: { type: 'string', description: 'Who performed the maintenance' }
+					}
+				}
+			},
+			required: ['maintenance_log_id', 'updates']
+		}
+	},
+	{
+		name: 'append_maintenance_log_notes',
+		description:
+			'Append text to an existing maintenance log notes field with an automatic timestamp. Prefer this when the user wants to add commentary without replacing existing notes.',
+		parameters: {
+			type: 'object',
+			properties: {
+				maintenance_log_id: {
+					type: 'number',
+					description: 'ID of the maintenance log'
+				},
+				additional_notes: {
+					type: 'string',
+					description: 'Text to append to the log notes'
+				}
+			},
+			required: ['maintenance_log_id', 'additional_notes']
 		}
 	},
 	{
@@ -423,11 +546,25 @@ export const maintenanceLogFunctions: LLMFunction[] = [
 	}
 ];
 
+export const suggestionsFunctions: LLMFunction[] = [
+	{
+		name: 'generate_suggestions',
+		description:
+			'Run the proactive maintenance analysis and generate a fresh set of Mech suggestions visible on the dashboard. Use when the user asks to refresh or generate suggestions.',
+		parameters: {
+			type: 'object',
+			properties: {},
+			required: []
+		}
+	}
+];
+
 // Combined function list
 export const allFunctions: LLMFunction[] = [
 	...equipmentFunctions,
 	...taskFunctions,
-	...maintenanceLogFunctions
+	...maintenanceLogFunctions,
+	...suggestionsFunctions
 ];
 
 // Function execution handlers
@@ -450,6 +587,10 @@ export class FunctionExecutor {
 					return await this.updateEquipment(args.equipment_id, args.updates);
 				case 'delete_equipment':
 					return await this.deleteEquipment(args.equipment_id);
+				case 'list_equipment_resources':
+					return await this.listEquipmentResources(args.equipment_id);
+				case 'get_equipment_resource_excerpt':
+					return await this.getEquipmentResourceExcerpt(args);
 
 				// Task functions
 				case 'get_task_types':
@@ -464,14 +605,25 @@ export class FunctionExecutor {
 					return await this.updateTask(args.task_id, args.updates);
 				case 'delete_task':
 					return await this.deleteTask(args.task_id);
+				case 'propose_bootstrap_service_schedule':
+					return await this.proposeBootstrapServiceSchedule(args.equipment_id);
 
 				// Maintenance log functions
 				case 'get_maintenance_logs':
-					return await this.getMaintenanceLogs();
+					return await this.getMaintenanceLogs(args);
+				case 'generate_suggestions':
+					return await this.generateSuggestions();
 				case 'complete_task':
 					return await this.completeTask(args);
 				case 'create_maintenance_log':
 					return await this.createMaintenanceLog(args);
+				case 'update_maintenance_log':
+					return await this.updateMaintenanceLog(args.maintenance_log_id, args.updates);
+				case 'append_maintenance_log_notes':
+					return await this.appendMaintenanceLogNotes(
+						args.maintenance_log_id,
+						args.additional_notes
+					);
 
 				default:
 					throw new Error(`Unknown function: ${name}`);
@@ -561,6 +713,84 @@ export class FunctionExecutor {
 		};
 	}
 
+	private async listEquipmentResources(equipmentId: number): Promise<ActionResult> {
+		const equipment = await equipmentRepository.getById(this.context.db, equipmentId);
+		if (!equipment) {
+			throw new Error(`Equipment with ID ${equipmentId} not found`);
+		}
+		const rows = await equipmentResourceRepository.getByEquipmentId(this.context.db, equipmentId);
+		return {
+			type: 'query',
+			entity: 'equipment',
+			result: {
+				equipment_id: equipmentId,
+				equipment_name: equipment.name,
+				resources: rows.map(toEquipmentResourceClient)
+			},
+			requires_confirmation: false
+		};
+	}
+
+	private async getEquipmentResourceExcerpt(args: {
+		resource_id: number;
+		equipment_id?: number;
+		start_char?: number;
+		max_chars?: number;
+	}): Promise<ActionResult> {
+		const row = await equipmentResourceRepository.getById(this.context.db, args.resource_id);
+		if (!row) {
+			throw new Error(`Resource with ID ${args.resource_id} not found`);
+		}
+		if (args.equipment_id !== undefined && row.equipment_id !== args.equipment_id) {
+			throw new Error('Resource does not belong to the specified equipment');
+		}
+		const start = Math.max(0, Math.floor(args.start_char ?? 0));
+		const requested = Math.floor(args.max_chars ?? 8000);
+		const max = Math.min(16000, Math.max(256, requested));
+		if (row.extraction_status !== 'ok' || !row.extracted_text) {
+			return {
+				type: 'query',
+				entity: 'equipment',
+				result: {
+					resource_id: row.id,
+					equipment_id: row.equipment_id,
+					original_filename: row.original_filename,
+					resource_kind: row.resource_kind,
+					extraction_status: row.extraction_status,
+					excerpt: null,
+					message:
+						row.extraction_status === 'pending'
+							? 'Text extraction is still pending or was not run.'
+							: row.extraction_status === 'skipped'
+								? 'No extractable text for this file type or content (e.g. scanned PDF without OCR).'
+								: row.extraction_status === 'failed'
+									? 'Text extraction failed for this file.'
+									: 'No extracted text available.'
+				},
+				requires_confirmation: false
+			};
+		}
+		const full = row.extracted_text;
+		const slice = full.slice(start, start + max);
+		return {
+			type: 'query',
+			entity: 'equipment',
+			result: {
+				resource_id: row.id,
+				equipment_id: row.equipment_id,
+				original_filename: row.original_filename,
+				resource_kind: row.resource_kind,
+				start_char: start,
+				max_chars: max,
+				total_extracted_length: full.length,
+				text_truncated_in_storage: Number(row.text_truncated) === 1,
+				excerpt: slice,
+				has_more: start + slice.length < full.length
+			},
+			requires_confirmation: false
+		};
+	}
+
 	// Task function implementations
 	private async getTaskTypes(): Promise<ActionResult> {
 		const types = await taskTypeRepository.getAll(this.context.db);
@@ -609,6 +839,70 @@ export class FunctionExecutor {
 		};
 	}
 
+	private async proposeBootstrapServiceSchedule(equipmentId: number): Promise<ActionResult> {
+		if (equipmentId == null || Number.isNaN(Number(equipmentId))) {
+			throw new Error('equipment_id is required');
+		}
+		const equipment = await equipmentRepository.getById(this.context.db, equipmentId);
+		if (!equipment) {
+			throw new Error(`Equipment with ID ${equipmentId} not found`);
+		}
+
+		const [taskTypes, existingTasks] = await Promise.all([
+			taskTypeRepository.getAll(this.context.db),
+			taskRepository.getByEquipmentId(this.context.db, equipmentId)
+		]);
+
+		const bootstrapBuilt = buildBootstrapTasksForEquipment(
+			equipmentId,
+			equipment.equipment_type_id,
+			taskTypes,
+			existingTasks
+		);
+		const { skipped_unresolved_type_names, skipped_duplicate_task_type_ids } = bootstrapBuilt;
+		let tasks = bootstrapBuilt.tasks;
+
+		const existing_task_type_ids = [...new Set(existingTasks.map((t) => t.task_type_id))];
+
+		if (tasks.length === 0) {
+			return {
+				type: 'query',
+				entity: 'task',
+				result: {
+					nothing_to_create: true,
+					equipment_id: equipmentId,
+					equipment_name: equipment.name,
+					skipped_unresolved_type_names,
+					skipped_duplicate_task_type_ids,
+					existing_task_type_ids
+				},
+				requires_confirmation: false
+			};
+		}
+
+		const equipmentTypeRow = await equipmentTypeRepository.getById(
+			this.context.db,
+			equipment.equipment_type_id
+		);
+		const equipmentTypeName = equipmentTypeRow?.name ?? 'other';
+		const taskTypeById = new Map(taskTypes.map((tt) => [tt.id, tt]));
+		tasks = await enrichBootstrapTasksWithLlm(equipment, equipmentTypeName, tasks, taskTypeById);
+
+		return {
+			type: 'create',
+			entity: 'task_batch',
+			data: {
+				equipment_id: equipmentId,
+				equipment_name: equipment.name,
+				tasks,
+				skipped_unresolved_type_names,
+				skipped_duplicate_task_type_ids
+			},
+			confirmation_message: `Create ${tasks.length} maintenance task${tasks.length === 1 ? '' : 's'} for "${equipment.name}"?`,
+			requires_confirmation: true
+		};
+	}
+
 	private async updateTask(id: number, updates: any): Promise<ActionResult> {
 		const task = await taskRepository.getById(this.context.db, id);
 		if (!task) {
@@ -638,12 +932,124 @@ export class FunctionExecutor {
 	}
 
 	// Maintenance log function implementations
-	private async getMaintenanceLogs(): Promise<ActionResult> {
-		const logs = await maintenanceLogRepository.getAll(this.context.db);
+	private async getMaintenanceLogs(args: Record<string, unknown> = {}): Promise<ActionResult> {
+		const equipmentId = args.equipment_id as number | undefined;
+		const taskId = args.task_id as number | undefined;
+		const dateRange = args.date_range as { start_date?: string; end_date?: string } | undefined;
+		const limitArg = args.limit as number | undefined;
+
+		let limit: number;
+		if (limitArg != null && !Number.isNaN(Number(limitArg)) && Number(limitArg) > 0) {
+			limit = Math.min(Number(limitArg), 500);
+		} else {
+			limit = 100;
+		}
+
+		const filter: MaintenanceLogsQueryFilter = {
+			...(equipmentId != null && !Number.isNaN(Number(equipmentId))
+				? { equipment_id: Number(equipmentId) }
+				: {}),
+			...(taskId != null && !Number.isNaN(Number(taskId)) ? { task_id: Number(taskId) } : {}),
+			...(dateRange?.start_date || dateRange?.end_date
+				? {
+						date_range: {
+							...(dateRange.start_date ? { start_date: dateRange.start_date } : {}),
+							...(dateRange.end_date ? { end_date: dateRange.end_date } : {})
+						}
+					}
+				: {}),
+			limit
+		};
+
+		const logs = await maintenanceLogRepository.listWithFilters(this.context.db, filter);
 		return {
 			type: 'query',
 			entity: 'maintenance_log',
 			result: logs,
+			requires_confirmation: false
+		};
+	}
+
+	private pickMaintenanceLogToolUpdates(raw: Record<string, unknown>): UpdateMaintenanceLogRequest {
+		const updates: UpdateMaintenanceLogRequest = {};
+		if (raw.notes !== undefined) updates.notes = raw.notes as string;
+		if (raw.cost !== undefined && raw.cost !== null) {
+			const c = Number(raw.cost);
+			if (!Number.isNaN(c)) updates.cost = c;
+		}
+		if (raw.parts_used !== undefined) updates.parts_used = raw.parts_used as string;
+		if (raw.service_provider !== undefined)
+			updates.service_provider = raw.service_provider as string;
+		return updates;
+	}
+
+	private async updateMaintenanceLog(
+		maintenanceLogId: number,
+		updatesArg: Record<string, unknown>
+	): Promise<ActionResult> {
+		if (maintenanceLogId == null || Number.isNaN(Number(maintenanceLogId))) {
+			throw new Error('maintenance_log_id is required');
+		}
+		const log = await maintenanceLogRepository.getById(this.context.db, Number(maintenanceLogId));
+		if (!log) {
+			throw new Error(`Maintenance log with ID ${maintenanceLogId} not found`);
+		}
+		const updates = this.pickMaintenanceLogToolUpdates(updatesArg ?? {});
+		if (Object.keys(updates).length === 0) {
+			throw new Error('At least one field in updates is required');
+		}
+		if (updates.cost !== undefined && updates.cost < 0) {
+			throw new Error('Cost must be non-negative');
+		}
+		return {
+			type: 'update',
+			entity: 'maintenance_log',
+			data: { id: log.id, updates },
+			confirmation_message: `Update maintenance log #${log.id} (completed ${log.completed_date})?`,
+			requires_confirmation: true
+		};
+	}
+
+	private async appendMaintenanceLogNotes(
+		maintenanceLogId: number,
+		additionalNotes: string
+	): Promise<ActionResult> {
+		if (maintenanceLogId == null || Number.isNaN(Number(maintenanceLogId))) {
+			throw new Error('maintenance_log_id is required');
+		}
+		const trimmed = typeof additionalNotes === 'string' ? additionalNotes.trim() : '';
+		if (!trimmed) {
+			throw new Error('additional_notes must be non-empty');
+		}
+		const log = await maintenanceLogRepository.getById(this.context.db, Number(maintenanceLogId));
+		if (!log) {
+			throw new Error(`Maintenance log with ID ${maintenanceLogId} not found`);
+		}
+		const merged = mergeMaintenanceLogNotesForAppend(log.notes, trimmed);
+		return {
+			type: 'update',
+			entity: 'maintenance_log',
+			data: { id: log.id, updates: { notes: merged } },
+			confirmation_message: `Add notes to maintenance log #${log.id} (completed ${log.completed_date})?`,
+			requires_confirmation: true
+		};
+	}
+
+	private async generateSuggestions(): Promise<ActionResult> {
+		const tone = (await globalSettingsRepository.getTypedValue(
+			this.context.db,
+			'assistant_tone',
+			'professional'
+		)) as GlobalSettingsValues['assistant_tone'];
+		const toneContext = getAssistantToneContext(tone);
+		const result = await runProactiveAgent(this.context.db, {
+			toneContext,
+			skipChangeCheck: true
+		});
+		return {
+			type: 'query',
+			entity: 'maintenance_log',
+			result: result ?? 'No new suggestions generated; data may be unchanged.',
 			requires_confirmation: false
 		};
 	}

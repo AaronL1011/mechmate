@@ -4,6 +4,12 @@ import type { Database } from '../types/db.js';
 import { NotificationService } from './notifications.js';
 import { backupManager } from './backup.js';
 import { getConfig } from '../config.js';
+import { globalSettingsRepository } from '../repositories.js';
+import * as pendingActions from '../agent/pending-actions.js';
+import { runProactiveAgent, pruneOldSuggestions } from '../agent/proactive.js';
+import { getAssistantToneContext } from '../agent/prompts.js';
+import { llmService } from '../services/llm.js';
+import type { GlobalSettingsValues } from '../types/db.js';
 
 let schedulerInstance: NotificationScheduler | null = null;
 
@@ -12,6 +18,7 @@ export class NotificationScheduler {
 	private notificationService: NotificationService;
 	private notificationCronJob: cron.ScheduledTask | null = null;
 	private backupCronJob: cron.ScheduledTask | null = null;
+	private proactiveCronJob: cron.ScheduledTask | null = null;
 	private isRunning = false;
 
 	constructor(db: Kysely<Database>) {
@@ -40,12 +47,60 @@ export class NotificationScheduler {
 				} catch (error) {
 					console.error('Error in scheduled notification check:', error);
 				}
+				try {
+					const deleted = await pendingActions.deleteExpiredPendingActions(this.db);
+					if (deleted > 0) {
+						console.log(`Cleaned up ${deleted} expired agent pending actions`);
+					}
+				} catch (error) {
+					console.error('Error cleaning expired pending actions:', error);
+				}
+				try {
+					const pruned = await pruneOldSuggestions(this.db);
+					if (pruned > 0) {
+						console.log(`Pruned ${pruned} proactive suggestions older than 90 days`);
+					}
+				} catch (error) {
+					console.error('Error pruning old proactive suggestions:', error);
+				}
 			},
 			{
 				scheduled: true,
 				timezone: process.env.TZ || 'UTC'
 			}
 		);
+
+		// Schedule proactive agent (daily at 22:00 UTC)
+		const proactiveSchedule = process.env.PROACTIVE_CRON_SCHEDULE || '0 22 * * *';
+		if (llmService.isConfigured()) {
+			console.log(`🤖 Starting proactive agent scheduler with schedule: ${proactiveSchedule}`);
+			this.proactiveCronJob = cron.schedule(
+				proactiveSchedule,
+				async () => {
+					console.log('Running proactive agent...');
+					try {
+						const tone = (await globalSettingsRepository.getTypedValue(
+							this.db,
+							'assistant_tone',
+							'professional'
+						)) as GlobalSettingsValues['assistant_tone'];
+						const toneContext = getAssistantToneContext(tone);
+						const result = await runProactiveAgent(this.db, { toneContext });
+						if (result) {
+							console.log('Proactive agent completed; suggestions stored.');
+						} else {
+							console.warn('Proactive agent produced no output.');
+						}
+					} catch (error) {
+						console.error('Error in proactive agent:', error);
+					}
+				},
+				{
+					scheduled: true,
+					timezone: process.env.TZ || 'UTC'
+				}
+			);
+		}
 
 		// Schedule automatic backups if enabled
 		if (config.AUTO_BACKUP_ENABLED) {
@@ -93,6 +148,11 @@ export class NotificationScheduler {
 		if (this.backupCronJob) {
 			this.backupCronJob.stop();
 			this.backupCronJob = null;
+		}
+
+		if (this.proactiveCronJob) {
+			this.proactiveCronJob.stop();
+			this.proactiveCronJob = null;
 		}
 
 		this.isRunning = false;

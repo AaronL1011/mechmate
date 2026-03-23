@@ -36,6 +36,8 @@ const ConfigSchema = z.object({
 
 	// Storage settings
 	UPLOAD_MAX_SIZE_MB: z.coerce.number().min(1).max(100).default(10),
+	/** Max upload size for equipment resource documents; defaults to UPLOAD_MAX_SIZE_MB when unset. */
+	RESOURCE_UPLOAD_MAX_SIZE_MB: z.coerce.number().min(1).max(100).optional(),
 	UPLOAD_DIR: z.string().default('data/uploads'),
 
 	// Monitoring and logging
@@ -165,6 +167,12 @@ export function getBackupDir(config?: Config): string {
 export function getUploadDir(config?: Config): string {
 	const cfg = config || getConfig();
 	return cfg.UPLOAD_DIR;
+}
+
+export function getResourceUploadMaxBytes(config?: Config): number {
+	const cfg = config || getConfig();
+	const mb = cfg.RESOURCE_UPLOAD_MAX_SIZE_MB ?? cfg.UPLOAD_MAX_SIZE_MB;
+	return mb * 1024 * 1024;
 }
 
 // Export schema for documentation generation
