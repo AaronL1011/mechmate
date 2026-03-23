@@ -61,20 +61,22 @@
 {#if !showMechAssistant}
 	<button
 		type="button"
-		class="group fixed end-[calc(1.5rem+env(safe-area-inset-right,0px))] bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] z-40 inline-flex min-h-20 min-w-20 items-center justify-center rounded-full p-[3px] text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 lg:end-[calc(1.5rem+env(safe-area-inset-right,0px))] lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] dark:focus-visible:ring-offset-gray-900"
+		class="group fixed end-[calc(1.5rem+env(safe-area-inset-right,0px))] bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] z-40 inline-flex items-center justify-center rounded-full border-0 bg-transparent p-0 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 lg:end-[calc(1.5rem+env(safe-area-inset-right,0px))] lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] dark:focus-visible:ring-offset-gray-900"
 		disabled={!stats}
 		aria-label="Open Mech assistant"
 		onclick={() => {
 			showMechAssistant = true;
 		}}
 	>
-		<span class="mech-fab-ring pointer-events-none absolute inset-0 rounded-full" aria-hidden="true"
-		></span>
 		<span
-			class="relative z-[1] inline-flex min-h-20 min-w-20 items-center justify-center gap-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-3 py-3 text-white shadow-md ring-1 ring-white/25 transition-[box-shadow,filter] duration-200 ring-inset group-hover:shadow-lg group-hover:shadow-blue-500/35 group-hover:brightness-[1.05] group-focus-visible:shadow-lg group-focus-visible:shadow-blue-500/40 group-disabled:from-gray-500 group-disabled:to-gray-600 group-disabled:shadow-none sm:px-4 dark:from-blue-500 dark:to-blue-700 dark:ring-white/15 dark:group-hover:shadow-blue-400/30 dark:group-hover:brightness-110"
+			class="cursor-pointer mech-fab-surface relative inline-flex min-h-20 min-w-20 items-center justify-center gap-3 rounded-full bg-white/10 px-3 py-3 text-gray-800 shadow-sm backdrop-blur-lg backdrop-saturate-150 transition-[background-color,border-color,transform] duration-300 sm:gap-4 sm:px-8 dark:bg-gray-600/10 dark:text-gray-100 dark:backdrop-blur-lg group-hover:bg-white/55 group-active:scale-[0.98] dark:group-hover:bg-gray-400/10"
 		>
-			<img src="/robot.png" alt="" class="h-10 w-10 shrink-0 drop-shadow-sm sm:h-10 sm:w-10 opacity-80 mix-blend-luminosity" />
-			<span class="hidden sm:inline text-lg">Ask Mech</span>
+			<img
+				src="/robot.png"
+				alt=""
+				class="mech-fab-icon h-10 w-10 shrink-0 sm:h-10 sm:w-10"
+			/>
+			<span class="hidden text-lg font-semibold tracking-tight sm:inline">Ask Mech</span>
 		</span>
 	</button>
 {/if}
@@ -106,68 +108,119 @@
 />
 
 <style>
-	/*
-	 * Animate the conic gradient angle, not transform — rotating the whole pill
-	 * makes the masked border spin off-axis behind the button.
-	 */
-	@property --mech-fab-angle {
-		syntax: '<angle>';
-		initial-value: 0deg;
-		inherits: false;
+	.mech-fab-surface {
+		border: 1px solid rgba(191, 219, 254, 0.38);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.55),
+			0 0 0 1px rgba(59, 130, 246, 0.07),
+			0 0 8px 0 rgba(37, 99, 235, 0.3),
+			0 0 14px 1px rgba(34, 211, 238, 0.1),
+			0 0 20px 2px rgba(147, 197, 253, 0.16);
+		animation: mech-fab-glow-light 5.5s ease-in-out infinite;
 	}
 
-	/* Conic gradient only in a ~3px band (not the full pill fill). */
-	.mech-fab-ring {
-		--mech-fab-angle: 0deg;
-		box-sizing: border-box;
-		padding: 3px;
-		background: conic-gradient(
-			from var(--mech-fab-angle),
-			rgb(59, 130, 246),
-			rgb(34, 211, 238),
-			rgb(147, 197, 253),
-			rgb(59, 130, 246)
-		);
-		-webkit-mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		-webkit-mask-composite: xor;
-		mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		mask-composite: exclude;
-		animation: mech-fab-ring-angle 3.2s linear infinite;
+	.group:hover:not(:disabled) .mech-fab-surface {
+		border-color: rgba(224, 242, 254, 0.55);
 	}
 
-	button:disabled .mech-fab-ring {
-		animation: none;
-		opacity: 0;
-	}
+	@media (prefers-color-scheme: dark) {
+		.mech-fab-surface {
+			border: 1px solid rgba(125, 211, 252, 0.16);
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.1),
+				0 0 0 1px rgba(96, 165, 250, 0.12),
+				0 0 10px 1px rgba(59, 130, 246, 0.4),
+				0 0 18px 2px rgba(34, 211, 238, 0.11),
+				0 0 24px 2px rgba(96, 165, 250, 0.1);
+			animation: mech-fab-glow-dark 5.5s ease-in-out infinite;
+		}
 
-	@keyframes mech-fab-ring-angle {
-		to {
-			--mech-fab-angle: 360deg;
+		.group:hover:not(:disabled) .mech-fab-surface {
+			border-color: rgba(125, 211, 252, 0.28);
 		}
 	}
 
-	@keyframes mech-fab-ring-soft-pulse {
+	.mech-fab-icon {
+		filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.12));
+	}
+
+	button:disabled .mech-fab-surface {
+		animation: none;
+		border-color: rgba(148, 163, 184, 0.32);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.28),
+			0 0 0 1px rgba(148, 163, 184, 0.15),
+			0 0 6px rgba(15, 23, 42, 0.06);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.mech-fab-icon {
+			filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+		}
+
+		button:disabled .mech-fab-surface {
+			border-color: rgba(71, 85, 105, 0.4);
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.04),
+				0 0 0 1px rgba(15, 23, 42, 0.6),
+				0 0 8px rgba(0, 0, 0, 0.38);
+		}
+	}
+
+	@keyframes mech-fab-glow-light {
 		0%,
 		100% {
-			opacity: 0.65;
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.55),
+				0 0 0 1px rgba(59, 130, 246, 0.07),
+				0 0 8px 0 rgba(37, 99, 235, 0.3),
+				0 0 14px 1px rgba(34, 211, 238, 0.1),
+				0 0 20px 2px rgba(147, 197, 253, 0.16);
 		}
 		50% {
-			opacity: 1;
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.62),
+				0 0 0 1px rgba(34, 211, 238, 0.09),
+				0 0 11px 0 rgba(34, 211, 238, 0.22),
+				0 0 17px 2px rgba(59, 130, 246, 0.14),
+				0 0 24px 2px rgba(96, 165, 250, 0.2);
+		}
+	}
+
+	@keyframes mech-fab-glow-dark {
+		0%,
+		100% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.1),
+				0 0 0 1px rgba(96, 165, 250, 0.12),
+				0 0 10px 1px rgba(59, 130, 246, 0.4),
+				0 0 18px 2px rgba(34, 211, 238, 0.11),
+				0 0 24px 2px rgba(96, 165, 250, 0.1);
+		}
+		50% {
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.14),
+				0 0 0 1px rgba(34, 211, 238, 0.13),
+				0 0 12px 1px rgba(34, 211, 238, 0.28),
+				0 0 20px 2px rgba(147, 197, 253, 0.09),
+				0 0 28px 3px rgba(59, 130, 246, 0.24);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.mech-fab-ring {
-			animation: mech-fab-ring-soft-pulse 2s ease-in-out infinite;
+		.mech-fab-surface {
+			animation: none;
 		}
 
-		button:disabled .mech-fab-ring {
-			animation: none;
-			opacity: 0;
+		@media (prefers-color-scheme: dark) {
+			.mech-fab-surface {
+				box-shadow:
+					inset 0 1px 0 rgba(255, 255, 255, 0.1),
+					0 0 0 1px rgba(96, 165, 250, 0.12),
+					0 0 10px 1px rgba(59, 130, 246, 0.38),
+					0 0 18px 2px rgba(34, 211, 238, 0.11),
+					0 0 24px 2px rgba(96, 165, 250, 0.1);
+			}
 		}
 	}
 </style>
