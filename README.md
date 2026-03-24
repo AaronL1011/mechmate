@@ -4,7 +4,7 @@ Self-hosted maintenance for equipment and recurring tasks, built around **Mech**
 
 Configure an **OpenAI-compatible API** (cloud or local) to unlock the assistant, proactive dashboard nudges, and voice input where the browser allows it.
 
-![mechmate home dashboard](./screenshot.png)
+<img width="4384" height="2939" alt="mechmate screenshots" src="https://github.com/user-attachments/assets/724d54e6-8f26-4ac4-99f4-74c54e9ec50f" />
 
 ## Features
 
