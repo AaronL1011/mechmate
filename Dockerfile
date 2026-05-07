@@ -29,9 +29,6 @@ RUN npm ci --prefer-offline --no-audit
 # Copy source code
 COPY . .
 
-# Copy environment file (use .env if exists, otherwise .env.example)
-COPY .env ./
-
 # Build the application
 RUN npm run build
 
@@ -53,7 +50,6 @@ RUN mkdir -p /app/data/backups /app/data/uploads && \
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/static ./static
-COPY --from=builder /app/.env ./.env
 RUN npm ci --omit=dev --prefer-offline --no-audit && \
     npm cache clean --force
 
