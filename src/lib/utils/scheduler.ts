@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import type { Kysely } from 'kysely';
 import type { Database } from '../types/db.js';
 import { NotificationService } from './notifications.js';
@@ -65,7 +65,6 @@ export class NotificationScheduler {
 				}
 			},
 			{
-				scheduled: true,
 				timezone: process.env.TZ || 'UTC'
 			}
 		);
@@ -96,7 +95,6 @@ export class NotificationScheduler {
 					}
 				},
 				{
-					scheduled: true,
 					timezone: process.env.TZ || 'UTC'
 				}
 			);
@@ -124,7 +122,6 @@ export class NotificationScheduler {
 					}
 				},
 				{
-					scheduled: true,
 					timezone: process.env.TZ || 'UTC'
 				}
 			);
